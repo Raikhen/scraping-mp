@@ -3,7 +3,7 @@ from pprint import pprint
 from bs4    import BeautifulSoup
 
 def get_directory():
-    # Make request to the route guide page
+    # Make request to get the route guide page
     url     = 'https://www.mountainproject.com/route-guide'
     content = requests.get(url).content
     soup    = BeautifulSoup(content)
