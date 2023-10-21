@@ -1,9 +1,11 @@
 import re
+import json
 import requests
 from pprint import pprint
 from bs4    import BeautifulSoup
 
 def parse_area_details(raw_details):
+    # Create a dictionary to store the area details
     details = {}
     rows    = raw_details.find_all('tr')
 
@@ -33,12 +35,21 @@ def parse_area_details(raw_details):
     }
 
     # Get "shared by"
-    pass
+    raw_shared_by   = rows[3].find_all('td')[1]
+    raw_uploader    = raw_shared_by.find_all('a')[0]
+    upload_date     = raw_shared_by.contents[2].strip()[3:]
+
+    details['shared_by'] = {
+        'name': raw_uploader.text,
+        'url': raw_uploader['href'],
+        'upload_date': upload_date
+    }
 
     # Get admins
-    pass
+    raw_admins          = rows[4].find_all('td')[1].find_all('a')
+    details['admins']   = [ { 'name': admin.text, 'url': admin['href'] } for admin in raw_admins ]
 
-    pprint(details)
+    # Return area details
     return details
 
 def get_area(url):
@@ -61,8 +72,9 @@ def get_area(url):
     area['items'] = { item.text: item['href'] for item in sidebar_items }
 
     # Get area name
-    raw_name        = soup.find('h1').text.split(' ')
-    area['name']    = ' '.join(raw_name[:-2]) if raw_name[-2] == 'Rock' else ' '.join(raw_name)[:-1]
+    soup.find('h1').span.decompose()
+    raw_name        = soup.find('h1').text
+    area['name']    = raw_name.strip()
 
     # Get area details
     raw_details = soup.find(class_ = 'description-details')
@@ -74,4 +86,6 @@ def get_area(url):
 
     return area
 
+# Test
 cannon = get_area('https://www.mountainproject.com/area/107340274/cannon-cliff')
+print(json.dumps(cannon, sort_keys = True, indent = 4))
