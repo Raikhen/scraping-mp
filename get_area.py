@@ -4,6 +4,13 @@ import requests
 from pprint import pprint
 from bs4    import BeautifulSoup
 
+'''
+TODO
+    - Get photos
+    - Get comments
+    - Get the "extra" info (the stuff that you need to click on the + to get)
+'''
+
 def parse_area_details(raw_details):
     # Create a dictionary to store the area details
     details = {}
@@ -81,8 +88,11 @@ def get_area(url):
     details     = parse_area_details(raw_details)
     area.update(details)
 
-    # Get area description
-    main_content    = soup.find(class_ = 'main-content')
+    # Get area description and directions
+    main_content            = soup.find(class_ = 'main-content')
+    sections                = main_content.find_all(class_ = 'fr-view')
+    area['description_txt'] = sections[0].get_text(separator = '\n\n')
+    area['directions_txt']  = sections[1].get_text(separator = '\n\n')
 
     return area
 
