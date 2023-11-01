@@ -79,9 +79,7 @@ def get_area(url):
     area['items'] = { item.text: item['href'] for item in sidebar_items }
 
     # Get area name
-    soup.find('h1').span.decompose()
-    raw_name        = soup.find('h1').text
-    area['name']    = raw_name.strip()
+    area['name'] = soup.find('h1').contents[0].strip()
 
     # Get area details
     raw_details = soup.find(class_ = 'description-details')
