@@ -8,9 +8,6 @@ logger = True
 
 username = quote_plus('EvilMonkey')
 password = quote_plus('&a@JREztYS5@EyPL')
-cluster = '<clusterName>'
-authSource = '<authSource>'
-authMechanism = '<authMechanism>'
 uri = 'mongodb+srv://' + username + ':' + password + '@cluster0.rhyjndk.mongodb.net/?retryWrites=true&w=majority'
 
 # Create a new client and connect to the server
@@ -27,44 +24,37 @@ db = client["mountain_project"]
 
 def populate_routes_in(areas, routes, area_id):
     area = get_area(area_id)
+    area_processed = process_area(area)
+
+    area_exists = areas.find_one({"_id": int(area_id)})
+    if area_exists is None:
+        # Object doesn't exist, so add it to the collection
+        result = areas.insert_one(area_processed)
+        lprint("New area added with id: " + str(result.inserted_id))
+    else:
+        # Object with the same name already exists; you can update it or take other action
+        lprint(f"Area {area_id} already exists.")
+
     for child in area['children']:
 
         child_id = str(child['id'])
 
         if child['type'] == 'Route':
 
-            new_route = {
-                "_id": child_id,
-                "area_id": area_id
-            }
+            route = get_route(child_id)
+            route = process_route(route)
 
-            route_exists = routes.find_one({"_id": child_id})
+            route_exists = routes.find_one({"_id": int(child_id)})
 
             if route_exists is None:
                 # Object doesn't exist, so add it to the collection
-                result = routes.insert_one(new_route)
-                lprint("New route added with _id: " + result.inserted_id)
+                result = routes.insert_one(route)
+                lprint("New route added with id: " + str(result.inserted_id))
             else:
                 # Object with the same name already exists; you can update it or take other action
                 lprint(f"Route {child_id} already exists.")
 
-        else:
-
-            new_area = {
-                "_id": child_id, 
-                "parent_id": area_id
-            }
-        
-            area_exists = areas.find_one({"_id": child_id})
-
-            if area_exists is None:
-                # Object doesn't exist, so add it to the collection
-                result = areas.insert_one(new_area)
-                lprint("New area added with _id: " + result.inserted_id)
-            else:
-                # Object with the same name already exists; you can update it or take other action
-                lprint(f"Area {area_id} already exists.")
-                
+        else: 
             populate_routes_in(areas, routes, child_id)
 
 def populate_routes(db):
@@ -75,23 +65,18 @@ def populate_routes(db):
 
     for state in directory:
         area_id = get_id(directory[state])
-
-        new_area = {
-            "_id": area_id, 
-            "parent_id": None
-        }
-
-        area_exists = areas.find_one({"_id": area_id})
-
-        if area_exists is None:
-            # Object doesn't exist, so add it to the collection
-            result = areas.insert_one(new_area)
-            lprint("New area added with _id:", result.inserted_id)
-        else:
-            # Object with the same name already exists; you can update it or take other action
-            lprint(f"Area {area_id} already exists.")
-
         populate_routes_in(areas, routes, area_id)
         break
+
+def process_area(area):
+    area_copy = area.copy()
+    del area_copy['children']
+    area_copy['_id'] = area_copy.pop('id')
+    return area_copy
+
+def process_route(route):
+    route_copy = route.copy()
+    route_copy['_id'] = route_copy.pop('id')
+    return route_copy
 
 populate_routes(db)
