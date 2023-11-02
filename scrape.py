@@ -57,6 +57,11 @@ def get_area(id):
     data = requests.get(url).json()
     return data
 
+def get_ticks(route_id):
+    url = f'https://www.mountainproject.com/api/v2/routes/{route_id}/ticks'
+    data = requests.get(url).json()
+    return data
+
 # Gets a route from MP given its ID
 def get_route(id):
     url     = f'https://www.mountainproject.com/api/v2/routes/{id}'
