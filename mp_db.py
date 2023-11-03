@@ -10,7 +10,7 @@ from joblib import Parallel, delayed
 
 username = quote_plus('EvilMonkey')
 password = quote_plus('&a@JREztYS5@EyPL')
-uri = 'mongodb+srv://' + username + ':' + password + '@cluster0.rhyjndk.mongodb.net/?retryWrites=true&w=majority'
+uri = 'mongodb://' + username + ':' + password + '@10.28.54.198:27017/?retryWrites=true&w=majority'
 
 # Create a new client and connect to the server
 client = MongoClient(uri, server_api=ServerApi('1'))
