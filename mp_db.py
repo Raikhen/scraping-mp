@@ -25,10 +25,9 @@ except Exception as e:
 db = client["mountain_project"]
 
 def populate_routes_in(areas, routes, area_id, worker_id = -1):
+    area_exists = areas.find_one({"_id": int(area_id)})
     area = get_area(area_id)
     area_processed = process_area(area)
-
-    area_exists = areas.find_one({"_id": int(area_id)})
     if area_exists is None:
         # Object doesn't exist, so add it to the collection
         result = areas.insert_one(area_processed)
@@ -49,13 +48,12 @@ def populate_routes_in(areas, routes, area_id, worker_id = -1):
 
         if child['type'] == 'Route':
 
-            route = get_route(child_id)
-            route = process_route(route)
-
             route_exists = routes.find_one({"_id": int(child_id)})
 
             if route_exists is None:
                 # Object doesn't exist, so add it to the collection
+                route = get_route(child_id)
+                route = process_route(route)
                 result = routes.insert_one(route)
                 if (worker_id == -1):
                     lprint("New route added with id: " + str(result.inserted_id))
@@ -128,4 +126,4 @@ def process_route(route):
     return route_copy
 
 last_checked_area = 112559685
-parallel_populate_routes(db, last_checked_area)
+populate_routes(db, last_checked_area)

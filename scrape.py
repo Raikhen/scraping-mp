@@ -1,8 +1,10 @@
 import re
 import json
+import time
 import requests
 import dateparser
 import pandas as pd
+from logger import lprint, lpprint
 from bs4            import BeautifulSoup
 from pprint         import pprint
 
@@ -54,7 +56,12 @@ def get_directory():
 # Gets an area from MP given its ID
 def get_area(id):
     url     = f'https://www.mountainproject.com/api/v2/areas/{id}'
-    data = requests.get(url).json()
+    try:
+        data = requests.get(url).json()
+    except:
+        lprint("Too many requests... Retrying")
+        time.sleep(3)
+        return get_area(id)
     return data
 
 def get_ticks(route_id):
@@ -65,7 +72,12 @@ def get_ticks(route_id):
 # Gets a route from MP given its ID
 def get_route(id):
     url     = f'https://www.mountainproject.com/api/v2/routes/{id}'
-    data    = requests.get(url).json()
+    try: 
+        data    = requests.get(url).json()
+    except:
+        lprint("Too many requests... Retrying")
+        time.sleep(3)
+        return get_route(id)
     return data
 
 # Gets the comments of a route or area from MP given its ID
