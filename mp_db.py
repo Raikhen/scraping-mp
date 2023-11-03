@@ -3,8 +3,7 @@ from pymongo.server_api import ServerApi
 from urllib.parse import quote_plus
 from scrape import get_route, get_area, get_id, get_directory
 from logger import lprint, lpprint
-
-logger = True
+from resume import find_root_parent_id
 
 username = quote_plus('EvilMonkey')
 password = quote_plus('&a@JREztYS5@EyPL')
@@ -57,16 +56,18 @@ def populate_routes_in(areas, routes, area_id):
         else: 
             populate_routes_in(areas, routes, child_id)
 
-def populate_routes(db):
+def populate_routes(db, start_id = 105905173):
+    started = False
     areas = db['areas']
     routes = db['routes']
     directory = get_directory()
     del directory['International']
-
     for state in directory:
         area_id = get_id(directory[state])
-        populate_routes_in(areas, routes, area_id)
-        break
+        if (find_root_parent_id(db, start_id) == area_id):
+            started = True
+        if (started):
+            populate_routes_in(areas, routes, area_id)
 
 def process_area(area):
     area_copy = area.copy()
@@ -79,4 +80,5 @@ def process_route(route):
     route_copy['_id'] = route_copy.pop('id')
     return route_copy
 
-populate_routes(db)
+last_checked_area = 112559685
+populate_routes(db, last_checked_area)
