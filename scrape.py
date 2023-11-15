@@ -1,6 +1,7 @@
 import re
 import json
 import time
+import zlib
 import requests
 import dateparser
 import pandas as pd
@@ -85,7 +86,13 @@ def get_comments(id, type = 'Route'):
     # Make request to get the route guide page comments page
     url_format  = f'https://www.mountainproject.com/comments/forObject/Climb-Lib-Models-{type}/'
     url_query   = '?sortOrder=oldest&showAll=true'
-    content     = requests.get(url_format + id + url_query).content
+    try: 
+        content     = requests.get(url_format + str(id) + url_query).content
+    except:
+        lprint("Too many requests... Retrying")
+        time.sleep(3)
+        content = get_comments(id, type)
+    
     soup        = BeautifulSoup(content, 'html.parser')
 
     # Create a list to store comments
@@ -100,8 +107,16 @@ def get_comments(id, type = 'Route'):
         comment_text    = soup.find_all(id= t_id + "-full")[0].text
         comment_time    = raw_comment.find_all(class_ = "comment-time")[0].text
         raw_user        = raw_comment.find(class_ = 'bio').find('a')
-        user_name       = raw_user.text
-        raw_user_id     = raw_user['href'].split('/')[-2]
+        if (raw_user is None):
+            #User is anonymous, create a unique ID for this user so that we can index it from 
+            #users database if need be
+            user_name = "Anonymous" + str(zlib.crc32(raw_comment.encode()))
+            raw_user_id     = zlib.crc32(raw_comment.encode())
+            lprint(f'User was anonymous, assigning ID: ' + str(zlib.crc32(raw_comment.encode())))
+        else: 
+            user_name       = raw_user.text
+            raw_user_id     = raw_user['href'].split('/')[-2]
+        
 
         comments.append({
             'id': t_id,
