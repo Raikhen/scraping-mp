@@ -115,7 +115,7 @@ def get_comments(id, type = 'Route'):
             lprint(f'User was anonymous, assigning ID: ' + str(zlib.crc32(raw_comment.encode())))
         else: 
             user_name       = raw_user.text
-            raw_user_id     = raw_user['href'].split('/')[-2]
+            raw_user_id     = int(raw_user['href'].split('/')[-2])
         
 
         comments.append({
