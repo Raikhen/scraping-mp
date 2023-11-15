@@ -119,7 +119,7 @@ def get_comments(id, type = 'Route'):
         
 
         comments.append({
-            'id': t_id,
+            'id': int(t_id),
             'text': comment_text.strip(), 
             'time': pd.to_datetime(dateparser.parse(comment_time)),
             'user': { 'name': user_name, 'id': raw_user_id }
