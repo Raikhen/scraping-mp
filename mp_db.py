@@ -165,9 +165,10 @@ def process_route(route):
 
 def process_comment(comment):
     comment_copy = comment.copy()
-    comment['_id'] = comment.pop('id')
-    comment['user_id'] = comment['user'].pop('id')
-    return comment
+    comment_copy['_id'] = comment_copy.pop('id')
+    comment_copy['user_id'] = comment_copy['user'].pop('id')
+    comment_copy.pop('user')
+    return comment_copy
 
 def process_user(user):
     user = user.copy()
