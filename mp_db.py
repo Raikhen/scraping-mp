@@ -134,8 +134,6 @@ def populate_comments(db, start_route=105714687, average_comments=10):
                         # lprint(f"Comment {comment_id} already exists.")
 
                 pbar.total = int(len(route_ids)*(total_comments_seen/total_routes_seen))
-                lprint(total_comments_seen)
-                lprint(total_routes_seen)
                 pbar.refresh()
         except:
             lprint("Broke on Route ID - " + str(route_ids[i]))
