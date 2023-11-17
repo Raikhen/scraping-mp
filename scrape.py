@@ -92,38 +92,72 @@ def get_comments(id):
         lprint("Too many requests... Retrying")
         time.sleep(3)
         content = get_comments(id, type)
-    
-    soup        = BeautifulSoup(content, 'html.parser')
 
-    # Create a list to store comments
     comments = []
+    try: 
+        try: 
+            soup        = BeautifulSoup(content, 'html.parser')
 
-    # Extract all comment IDs from HTML 
-    comment_ids = re.findall(r"Comment-(\d+)", str(soup))
-    comment_ids = set(comment_ids)
-    
-    for t_id in comment_ids:
-        raw_comment     = soup.find(id= "Comment-" + t_id)
-        comment_text    = soup.find_all(id= t_id + "-full")[0].text
-        comment_time    = raw_comment.find_all(class_ = "comment-time")[0].text
-        raw_user        = raw_comment.find(class_ = 'bio').find('a')
-        if (raw_user is None):
-            #User is anonymous, create a unique ID for this user so that we can index it from 
-            #users database if need be
-            user_name = "Anonymous" + str(zlib.crc32(raw_comment.encode()))
-            raw_user_id     = zlib.crc32(raw_comment.encode())
-            lprint(f'User was anonymous, assigning ID: ' + str(zlib.crc32(raw_comment.encode())))
-        else: 
-            user_name       = raw_user.text
-            raw_user_id     = int(raw_user['href'].split('/')[-2])
-        
+            # Create a list to store comment
 
-        comments.append({
-            'id': int(t_id),
-            'text': comment_text.strip(), 
-            'time': pd.to_datetime(dateparser.parse(comment_time)),
-            'user': { 'name': user_name, 'id': raw_user_id }
-        })
+            # Extract all comment IDs from HTML 
+            comment_ids = re.findall(r"Comment-(\d+)", str(soup))
+            comment_ids = set(comment_ids)
+
+            for t_id in comment_ids:
+                raw_comment     = soup.find(id= "Comment-" + t_id)
+                comment_text    = soup.find_all(id= t_id + "-full")[0].text
+                comment_time    = raw_comment.find_all(class_ = "comment-time")[0].text
+                raw_user        = raw_comment.find(class_ = 'bio').find('a')
+                if (raw_user is None):
+                    #User is anonymous, create a unique ID for this user so that we can index it from 
+                    #users database if need be
+                    user_name = "Anonymous" + str(zlib.crc32(raw_comment.encode()))
+                    raw_user_id     = zlib.crc32(raw_comment.encode())
+                    lprint(f'User was anonymous, assigning ID: ' + str(zlib.crc32(raw_comment.encode())))
+                else: 
+                    user_name       = raw_user.text
+                    raw_user_id     = int(raw_user['href'].split('/')[-2])
+                
+
+                comments.append({
+                    'id': int(t_id),
+                    'text': comment_text.strip(), 
+                    'time': pd.to_datetime(dateparser.parse(comment_time)),
+                    'user': { 'name': user_name, 'id': raw_user_id }
+                })
+        except: 
+            soup        = BeautifulSoup(content, 'lxml')
+
+            # Extract all comment IDs from HTML 
+            comment_ids = re.findall(r"Comment-(\d+)", str(soup))
+            comment_ids = set(comment_ids)
+
+            for t_id in comment_ids:
+                raw_comment     = soup.find(id= "Comment-" + t_id)
+                comment_text    = soup.find_all(id= t_id + "-full")[0].text
+                comment_time    = raw_comment.find_all(class_ = "comment-time")[0].text
+                raw_user        = raw_comment.find(class_ = 'bio').find('a')
+                if (raw_user is None):
+                    #User is anonymous, create a unique ID for this user so that we can index it from 
+                    #users database if need be
+                    user_name = "Anonymous" + str(zlib.crc32(raw_comment.encode()))
+                    raw_user_id     = zlib.crc32(raw_comment.encode())
+                    lprint(f'User was anonymous, assigning ID: ' + str(zlib.crc32(raw_comment.encode())))
+                else: 
+                    user_name       = raw_user.text
+                    raw_user_id     = int(raw_user['href'].split('/')[-2])
+                
+
+                comments.append({
+                    'id': int(t_id),
+                    'text': comment_text.strip(), 
+                    'time': pd.to_datetime(dateparser.parse(comment_time)),
+                    'user': { 'name': user_name, 'id': raw_user_id }
+                })
+    except: 
+        return comments
+
 
     return comments
 
