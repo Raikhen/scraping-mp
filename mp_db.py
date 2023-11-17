@@ -83,7 +83,7 @@ def populate_routes(db, start_id = 105905173):
         if (started):
             populate_routes_in(areas, routes, area_id)
 
-def populate_comments(db, start_route=105714687, total_comments_est=10):
+def populate_comments(db, start_route=105714687, total_comments_est=677307):
     users_col = db['users']
     comments_col = db['comments']
 
@@ -93,7 +93,7 @@ def populate_comments(db, start_route=105714687, total_comments_est=10):
 
     total_comments_seen = 0
     total_routes_seen = 0
-    with tqdm(total=total_comments_est) as pbar:
+    with tqdm(total=total_comments_est, colour='green') as pbar:
         try:
             for i in range(start_idx, len(route_ids)):
                 total_routes_seen += 1
