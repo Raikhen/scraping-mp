@@ -133,7 +133,9 @@ def populate_comments(db, start_route=105714687, average_comments=10):
                         # Object with the same name already exists; you can update it or take other action
                         # lprint(f"Comment {comment_id} already exists.")
 
-                pbar.total = len(route_ids)*int(total_comments_seen/total_routes_seen)
+                pbar.total = int(len(route_ids)*(total_comments_seen/total_routes_seen))
+                lprint(total_comments_seen)
+                lprint(total_routes_seen)
                 pbar.refresh()
         except:
             lprint("Broke on Route ID - " + str(route_ids[i]))
@@ -194,4 +196,4 @@ def process_user(user):
     user['_id'] = user.pop('id')
     return user
 
-populate_comments(db, start_route=105731168)
+populate_comments(db, start_route=105737534)
