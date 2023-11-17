@@ -83,7 +83,7 @@ def populate_routes(db, start_id = 105905173):
         if (started):
             populate_routes_in(areas, routes, area_id)
 
-def populate_comments(db, start_route=105714687, average_comments=10):
+def populate_comments(db, start_route=105714687, total_comments_est=10):
     users_col = db['users']
     comments_col = db['comments']
 
@@ -93,7 +93,7 @@ def populate_comments(db, start_route=105714687, average_comments=10):
 
     total_comments_seen = 0
     total_routes_seen = 0
-    with tqdm(total=len(route_ids)*average_comments) as pbar:
+    with tqdm(total=total_comments_est) as pbar:
         try:
             for i in range(start_idx, len(route_ids)):
                 total_routes_seen += 1
@@ -137,6 +137,7 @@ def populate_comments(db, start_route=105714687, average_comments=10):
                 pbar.refresh()
         except:
             lprint("Broke on Route ID - " + str(route_ids[i]))
+            lprint("Last Known Total Comments was - " + str(int(len(route_ids)*(total_comments_seen/total_routes_seen))))
 
 
 def directory_index(directory, area_id):
@@ -194,4 +195,4 @@ def process_user(user):
     user['_id'] = user.pop('id')
     return user
 
-populate_comments(db, start_route=105737534)
+populate_comments(db, start_route=105742145)

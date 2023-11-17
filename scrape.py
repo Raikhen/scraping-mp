@@ -143,7 +143,7 @@ def get_comments(id):
                     #users database if need be
                     user_name = "Anonymous" + str(zlib.crc32(raw_comment.encode()))
                     raw_user_id     = zlib.crc32(raw_comment.encode())
-                    lprint(f'User was anonymous, assigning ID: ' + str(zlib.crc32(raw_comment.encode())))
+                    # lprint(f'User was anonymous, assigning ID: ' + str(zlib.crc32(raw_comment.encode())))
                 else: 
                     user_name       = raw_user.text
                     raw_user_id     = int(raw_user['href'].split('/')[-2])
