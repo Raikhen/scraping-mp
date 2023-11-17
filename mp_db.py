@@ -175,5 +175,4 @@ def process_user(user):
     user['_id'] = user.pop('id')
     return user
 
-last_checked_area = 112559685
-populate_comments(db)
+populate_comments(db, start_route=105722317)

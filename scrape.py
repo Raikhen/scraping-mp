@@ -82,9 +82,9 @@ def get_route(id):
     return data
 
 # Gets the comments of a route or area from MP given its ID
-def get_comments(id, type = 'Route'):
+def get_comments(id):
     # Make request to get the route guide page comments page
-    url_format  = f'https://www.mountainproject.com/comments/forObject/Climb-Lib-Models-{type}/'
+    url_format  = f'https://www.mountainproject.com/comments/forObject/Climb-Lib-Models-Route/'
     url_query   = '?sortOrder=oldest&showAll=true'
     try: 
         content     = requests.get(url_format + str(id) + url_query).content
@@ -93,7 +93,7 @@ def get_comments(id, type = 'Route'):
         time.sleep(3)
         content = get_comments(id, type)
     
-    soup        = BeautifulSoup(content, 'html.parser')
+    soup        = BeautifulSoup(content, 'lxml')
 
     # Create a list to store comments
     comments = []
@@ -105,7 +105,7 @@ def get_comments(id, type = 'Route'):
     for t_id in comment_ids:
         raw_comment     = soup.find(id= "Comment-" + t_id)
         comment_text    = soup.find_all(id= t_id + "-full")[0].text
-        comment_time    = raw_comment.find_all(class_ = "comment-time")[0].text
+        comment_time    = raw_comment.find_all('span', class_ = "comment-time")[0].text
         raw_user        = raw_comment.find(class_ = 'bio').find('a')
         if (raw_user is None):
             #User is anonymous, create a unique ID for this user so that we can index it from 
