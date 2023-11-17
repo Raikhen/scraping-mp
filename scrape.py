@@ -93,7 +93,7 @@ def get_comments(id):
         time.sleep(3)
         content = get_comments(id, type)
     
-    soup        = BeautifulSoup(content, 'lxml')
+    soup        = BeautifulSoup(content, 'html.parser')
 
     # Create a list to store comments
     comments = []
@@ -101,11 +101,11 @@ def get_comments(id):
     # Extract all comment IDs from HTML 
     comment_ids = re.findall(r"Comment-(\d+)", str(soup))
     comment_ids = set(comment_ids)
-
+    
     for t_id in comment_ids:
         raw_comment     = soup.find(id= "Comment-" + t_id)
         comment_text    = soup.find_all(id= t_id + "-full")[0].text
-        comment_time    = raw_comment.find_all('span', class_ = "comment-time")[0].text
+        comment_time    = raw_comment.find_all(class_ = "comment-time")[0].text
         raw_user        = raw_comment.find(class_ = 'bio').find('a')
         if (raw_user is None):
             #User is anonymous, create a unique ID for this user so that we can index it from 

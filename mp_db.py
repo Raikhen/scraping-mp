@@ -175,4 +175,4 @@ def process_user(user):
     user['_id'] = user.pop('id')
     return user
 
-populate_comments(db, start_route=105722317)
+populate_comments(db, start_route=105723658)
