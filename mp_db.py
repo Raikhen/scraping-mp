@@ -9,6 +9,7 @@ from multiprocessing import cpu_count
 from joblib import Parallel, delayed
 from tqdm import tqdm
 
+#Connect to Mongo Server in Trust Lab
 username = quote_plus('EvilMonkey')
 password = quote_plus('&a@JREztYS5@EyPL')
 uri = 'mongodb://' + username + ':' + password + '@10.28.54.198:27017/?retryWrites=true&w=majority'
@@ -84,17 +85,22 @@ def populate_routes(db, start_id = 105905173):
             populate_routes_in(areas, routes, area_id)
 
 def populate_comments(db, start_route=105714687):
+    #Gather collections
     users_col = db['users']
     comments_col = db['comments']
 
+    #Get route ids
     json_route_ids = db['routes'].find({"_id": {"$exists": True}}, {"_id": 1})
     route_ids = sorted([json["_id"] for json in json_route_ids])
     start_idx = route_ids.index(start_route)
 
+    #Track comments seen for progress bar
     total_comments_seen = db['comments'].count_documents({})
     total_routes_seen = start_idx
+
     with tqdm(total=int(len(route_ids)*(total_comments_seen/total_routes_seen)), colour='green') as pbar:
         pbar.update(total_comments_seen)
+
         try:
             for i in range(start_idx, len(route_ids)):
                 total_routes_seen += 1
@@ -134,6 +140,7 @@ def populate_comments(db, start_route=105714687):
 
                 pbar.total = int(len(route_ids)*(total_comments_seen/total_routes_seen))
                 pbar.refresh()
+
         except Exception as e:
             lprint("Broke on Route ID - " + str(route_ids[i]))
             lprint("Last Known Total Comments was - " + str(int(len(route_ids)*(total_comments_seen/total_routes_seen))))
@@ -146,12 +153,12 @@ def directory_index(directory, area_id):
             index = i
     return index
 
-def worker(state, db, start_id, areas, routes, directory, worker_id):
-    area_id = get_id(directory[state])
-    if directory_index(directory, area_id) >= directory_index(directory, find_root_parent_id(db, start_id)):
-        populate_routes_in(areas, routes, area_id, worker_id)
+# def worker(state, db, start_id, areas, routes, directory, worker_id):
+#     area_id = get_id(directory[state])
+#     if directory_index(directory, area_id) >= directory_index(directory, find_root_parent_id(db, start_id)):
+#         populate_routes_in(areas, routes, area_id, worker_id)
 
-def parallel_populate_routes(db, start_id=105905173):
+# def parallel_populate_routes(db, start_id=105905173):
     areas = db['areas']
     routes = db['routes']
     directory = get_directory()
@@ -194,4 +201,4 @@ def process_user(user):
     user['_id'] = user.pop('id')
     return user
 
-populate_comments(db, start_route=112087485)
+populate_comments(db, start_route=112506685)
