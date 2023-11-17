@@ -83,7 +83,7 @@ def populate_routes(db, start_id = 105905173):
         if (started):
             populate_routes_in(areas, routes, area_id)
 
-def populate_comments(db, start_route=105714687, total_comments_est=677307):
+def populate_comments(db, start_route=105714687):
     users_col = db['users']
     comments_col = db['comments']
 
@@ -91,9 +91,10 @@ def populate_comments(db, start_route=105714687, total_comments_est=677307):
     route_ids = sorted([json["_id"] for json in json_route_ids])
     start_idx = route_ids.index(start_route)
 
-    total_comments_seen = 0
-    total_routes_seen = 0
-    with tqdm(total=total_comments_est, colour='green') as pbar:
+    total_comments_seen = db['comments'].count_documents({})
+    total_routes_seen = start_idx
+    with tqdm(total=int(len(route_ids)*(total_comments_seen/total_routes_seen)), colour='green') as pbar:
+        pbar.update(total_comments_seen)
         try:
             for i in range(start_idx, len(route_ids)):
                 total_routes_seen += 1
@@ -112,11 +113,10 @@ def populate_comments(db, start_route=105714687, total_comments_est=677307):
                     if user_exists is None:
                         # Object doesn't exist, so add it to the collection
                         result = users_col.insert_one(user)
-                        # lprint("New user added with id: " + str(result.inserted_id))
+                        lprint("New user added with id: " + str(result.inserted_id))
                     else:
-                        pass
                         # Object with the same name already exists; you can update it or take other action
-                        # lprint(f"User {user_id} already exists.")
+                        lprint(f"User {user_id} already exists.")
 
                     #Add comment to database
                     comment = process_comment(comment)
@@ -126,16 +126,15 @@ def populate_comments(db, start_route=105714687, total_comments_est=677307):
                     if comment_exists is None:
                         # Object doesn't exist, so add it to the collection
                         result = comments_col.insert_one(comment)
-                        # lprint(f"New comment added for route {route_ids[i]} with id: " + str(result.inserted_id))
+                        lprint(f"New comment added for route {route_ids[i]} with id: " + str(result.inserted_id))
             
                     else:
-                        pass
                         # Object with the same name already exists; you can update it or take other action
-                        # lprint(f"Comment {comment_id} already exists.")
+                        lprint(f"Comment {comment_id} already exists.")
 
                 pbar.total = int(len(route_ids)*(total_comments_seen/total_routes_seen))
                 pbar.refresh()
-        except:
+        except Exception as e:
             lprint("Broke on Route ID - " + str(route_ids[i]))
             lprint("Last Known Total Comments was - " + str(int(len(route_ids)*(total_comments_seen/total_routes_seen))))
 
@@ -195,4 +194,4 @@ def process_user(user):
     user['_id'] = user.pop('id')
     return user
 
-populate_comments(db, start_route=105742145)
+populate_comments(db, start_route=112087485)

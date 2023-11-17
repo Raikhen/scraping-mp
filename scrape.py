@@ -127,6 +127,7 @@ def get_comments(id):
                     'user': { 'name': user_name, 'id': raw_user_id }
                 })
         except: 
+            lprint("HTML Parser failed, trying lxml...")
             soup        = BeautifulSoup(content, 'lxml')
 
             # Extract all comment IDs from HTML 
@@ -143,7 +144,7 @@ def get_comments(id):
                     #users database if need be
                     user_name = "Anonymous" + str(zlib.crc32(raw_comment.encode()))
                     raw_user_id     = zlib.crc32(raw_comment.encode())
-                    # lprint(f'User was anonymous, assigning ID: ' + str(zlib.crc32(raw_comment.encode())))
+                    lprint(f'User was anonymous, assigning ID: ' + str(zlib.crc32(raw_comment.encode())))
                 else: 
                     user_name       = raw_user.text
                     raw_user_id     = int(raw_user['href'].split('/')[-2])
@@ -155,7 +156,9 @@ def get_comments(id):
                     'time': pd.to_datetime(dateparser.parse(comment_time)),
                     'user': { 'name': user_name, 'id': raw_user_id }
                 })
-    except: 
+    except Exception as e: 
+        lprint("Comment parsing failed:")
+        lprint('\t' + e)
         return comments
 
 
