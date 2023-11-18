@@ -362,4 +362,5 @@ def process_ticks(tick):
     return tick_copy
 
 # populate_comments(db, start_route=113585416)
-populate_ticks_parallel(db)
+# populate_ticks_parallel(db)
+populate_ticks(db)
