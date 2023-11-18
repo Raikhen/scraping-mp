@@ -138,6 +138,7 @@ def get_comments(id):
                 raw_comment     = soup.find(id= "Comment-" + t_id)
                 comment_text    = soup.find_all(id= t_id + "-full")[0].text
                 comment_time    = raw_comment.find_all(class_ = "comment-time")[0].text
+                lpprint(comment_time)
                 raw_user        = raw_comment.find(class_ = 'bio').find('a')
                 if (raw_user is None):
                     #User is anonymous, create a unique ID for this user so that we can index it from 
@@ -158,7 +159,8 @@ def get_comments(id):
                 })
     except Exception as e: 
         lprint("Comment parsing failed:")
-        lprint('\t' + e)
+        lprint(e)
+        raise Exception()
         return comments
 
 

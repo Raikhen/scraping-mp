@@ -3,6 +3,7 @@ from pymongo.server_api import ServerApi
 from urllib.parse import quote_plus
 from scrape import get_route, get_area, get_id, get_directory, get_comments
 from logger import lprint, lpprint
+from config import progress_bar
 from resume import find_root_parent_id
 from multiprocessing.pool import ThreadPool as Pool
 from multiprocessing import cpu_count
@@ -84,6 +85,7 @@ def populate_routes(db, start_id = 105905173):
         if (started):
             populate_routes_in(areas, routes, area_id)
 
+
 def populate_comments(db, start_route=105714687):
     #Gather collections
     users_col = db['users']
@@ -98,53 +100,55 @@ def populate_comments(db, start_route=105714687):
     total_comments_seen = db['comments'].count_documents({})
     total_routes_seen = start_idx
 
-    with tqdm(total=int(len(route_ids)*(total_comments_seen/total_routes_seen)), colour='green') as pbar:
+    if progress_bar:
+        pbar = tqdm(total=int(len(route_ids)*(total_comments_seen/total_routes_seen)), colour='green')
         pbar.update(total_comments_seen)
 
-        try:
-            for i in range(start_idx, len(route_ids)):
-                total_routes_seen += 1
+    try:
+        for i in range(start_idx, len(route_ids)):
+            total_routes_seen += 1
 
-                comments = get_comments(route_ids[i])
-                for comment in comments:
+            comments = get_comments(route_ids[i])
+            for comment in comments:
 
-                    total_comments_seen += 1
+                total_comments_seen += 1
+                if progress_bar:
                     pbar.update(1)
 
-                    #Add user to database
-                    user = comment['user']
-                    user = process_user(user)
-                    user_id = user['_id']
-                    user_exists = users_col.find_one({"_id": user_id})
-                    if user_exists is None:
-                        # Object doesn't exist, so add it to the collection
-                        result = users_col.insert_one(user)
-                        lprint("New user added with id: " + str(result.inserted_id))
-                    else:
-                        # Object with the same name already exists; you can update it or take other action
-                        lprint(f"User {user_id} already exists.")
+                #Add user to database
+                user = comment['user']
+                user = process_user(user)
+                user_id = user['_id']
+                user_exists = users_col.find_one({"_id": user_id})
+                if user_exists is None:
+                    # Object doesn't exist, so add it to the collection
+                    result = users_col.insert_one(user)
+                    lprint("New user added with id: " + str(result.inserted_id))
+                else:
+                    # Object with the same name already exists; you can update it or take other action
+                    lprint(f"User {user_id} already exists.")
 
-                    #Add comment to database
-                    comment = process_comment(comment)
-                    comment['route_id'] = route_ids[i]
-                    comment_id = comment['_id']
-                    comment_exists = comments_col.find_one({"_id": comment_id})
-                    if comment_exists is None:
-                        # Object doesn't exist, so add it to the collection
-                        result = comments_col.insert_one(comment)
-                        lprint(f"New comment added for route {route_ids[i]} with id: " + str(result.inserted_id))
-            
-                    else:
-                        # Object with the same name already exists; you can update it or take other action
-                        lprint(f"Comment {comment_id} already exists.")
+                #Add comment to database
+                comment = process_comment(comment)
+                comment['route_id'] = route_ids[i]
+                comment_id = comment['_id']
+                comment_exists = comments_col.find_one({"_id": comment_id})
+                if comment_exists is None:
+                    # Object doesn't exist, so add it to the collection
+                    result = comments_col.insert_one(comment)
+                    lprint(f"New comment added for route {route_ids[i]} with id: " + str(result.inserted_id))
+        
+                else:
+                    # Object with the same name already exists; you can update it or take other action
+                    lprint(f"Comment {comment_id} already exists.")
 
+            if progress_bar:
                 pbar.total = int(len(route_ids)*(total_comments_seen/total_routes_seen))
                 pbar.refresh()
 
-        except Exception as e:
-            lprint("Broke on Route ID - " + str(route_ids[i]))
-            lprint("Last Known Total Comments was - " + str(int(len(route_ids)*(total_comments_seen/total_routes_seen))))
-
+    except Exception as e:
+        lprint("Broke on Route ID - " + str(route_ids[i]))
+        lprint("Last Known Total Comments was - " + str(int(len(route_ids)*(total_comments_seen/total_routes_seen))))
 
 def directory_index(directory, area_id):
     index = None
@@ -201,4 +205,4 @@ def process_user(user):
     user['_id'] = user.pop('id')
     return user
 
-populate_comments(db, start_route=112506685)
+populate_comments(db, start_route=113585416)
