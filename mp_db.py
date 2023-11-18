@@ -12,6 +12,8 @@ import multiprocessing
 from joblib import Parallel, delayed
 from tqdm import tqdm
 
+total_threads = 64
+
 #Connect to Mongo Server in Trust Lab
 username = quote_plus('EvilMonkey')
 password = quote_plus('&a@JREztYS5@EyPL')
@@ -123,6 +125,7 @@ def populate_ticks(db, start_route=105714687):
                 tick['route_id'] = route_ids[i]
                 tick_id = tick['_id']
                 tick_exists = ticks_col.find_one({"_id": tick_id})
+                
                 if tick_exists is None:
                     # Object doesn't exist, so add it to the collection
                     result = ticks_col.insert_one(tick)
@@ -130,7 +133,7 @@ def populate_ticks(db, start_route=105714687):
         
                 else:
                     # Object with the same name already exists; you can update it or take other action
-                    lprint(f"Comment {tick_id} already exists.")
+                    lprint(f"Tick {tick_id} already exists.")
 
             if progress_bar:
                 pbar.total = int(len(route_ids)*(total_ticks_seen/total_routes_seen))
@@ -140,8 +143,72 @@ def populate_ticks(db, start_route=105714687):
         lprint(e)
         lprint("Broke on Route ID - " + str(route_ids[i]))
 
-def populate_ticks_worker():
-    lprint(multiprocessing.current_process().name)
+def populate_ticks_worker(db, thread_num, start_info=None):
+    #Gather collections
+    users_col = db['users']
+    ticks_col = db['ticks']
+
+    #Get route ids
+    json_route_ids = db['routes'].find({"_id": {"$exists": True}}, {"_id": 1})
+    route_ids = sorted([json["_id"] for json in json_route_ids])    #Track comments seen for progress bar
+
+    # Calculate the size of each portion
+    portion_size = len(route_ids) // total_threads
+    
+    # Calculate the start index for the current thread
+    start_idx = thread_num * portion_size
+    
+    # Calculate the end index for the current thread
+    end_idx = start_idx + portion_size
+
+    # Adjust the end index for the last thread to include any remaining elements
+    if thread_num == total_threads - 1:
+        end_idx = len(route_ids)
+
+    if start_info is not None:
+        for info in start_info:
+            if thread_num == info[0]:
+                start_idx = info[1]
+
+    try:
+        for i in range(start_idx, end_idx + 1):
+
+            ticks = get_ticks(route_ids[i])
+            for tick in ticks:
+                #Add user to database
+                user = tick['user']
+
+                #Ignore private ticks
+                if user is False:
+                    continue
+                user = process_user(user)
+                user_id = user['_id']
+                user_exists = users_col.find_one({"_id": user_id})
+                if user_exists is None:
+                    # Object doesn't exist, so add it to the collection
+                    result = users_col.insert_one(user)
+                    lprint("[{thread_num}] New user added with id: " + str(result.inserted_id))
+                else:
+                    # Object with the same name already exists; you can update it or take other action
+                    lprint(f"[{thread_num}] User {user_id} already exists.")
+
+                #Add tick to database
+                tick = process_ticks(tick)
+                tick['route_id'] = route_ids[i]
+                tick_id = tick['_id']
+                tick_exists = ticks_col.find_one({"_id": tick_id})
+                
+                if tick_exists is None:
+                    # Object doesn't exist, so add it to the collection
+                    result = ticks_col.insert_one(tick)
+                    lprint(f"[{thread_num}] New tick added for route {route_ids[i]} with id: " + str(result.inserted_id))
+        
+                else:
+                    # Object with the same name already exists; you can update it or take other action
+                    lprint(f"[{thread_num}] Tick {tick_id} already exists.")
+    except Exception as e:
+        lprint(e)
+        lprint(f"[{thread_num}] Broke on Route ID - " + str(route_ids[i]))
 
 def populate_ticks_parallel(db):
     # Get the number of CPU cores
@@ -150,7 +217,7 @@ def populate_ticks_parallel(db):
     # Create and start threads
     threads = []
     for i in range(num_cores):
-        thread = multiprocessing.Process(target=populate_ticks_worker, name="Thread {}".format(i + 1))
+        thread = multiprocessing.Process(target=populate_ticks_worker, args=(db, i + 1))
         threads.append(thread)
         thread.start()
 
