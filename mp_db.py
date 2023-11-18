@@ -187,7 +187,7 @@ def populate_ticks_worker(db, thread_num, start_info=None):
                 if user_exists is None:
                     # Object doesn't exist, so add it to the collection
                     result = users_col.insert_one(user)
-                    lprint("[{thread_num}] New user added with id: " + str(result.inserted_id))
+                    lprint(f"[{thread_num}] New user added with id: " + str(result.inserted_id))
                 else:
                     # Object with the same name already exists; you can update it or take other action
                     lprint(f"[{thread_num}] User {user_id} already exists.")
@@ -207,7 +207,6 @@ def populate_ticks_worker(db, thread_num, start_info=None):
                     # Object with the same name already exists; you can update it or take other action
                     lprint(f"[{thread_num}] Tick {tick_id} already exists.")
     except Exception as e:
-        lprint(e)
         lprint(f"[{thread_num}] Broke on Route ID - " + str(route_ids[i]))
 
 def populate_ticks_parallel(db):
