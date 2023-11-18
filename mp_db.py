@@ -83,7 +83,7 @@ def populate_ticks(db, start_route=105714687):
     start_idx = route_ids.index(start_route)
 
     total_ticks_seen = db['ticks'].count_documents({})
-    total_routes_seen = start_idx
+    total_routes_seen = 1 if start_idx == 0 else start_idx
 
     if progress_bar:
         pbar = tqdm(total=int(len(route_ids)*(total_ticks_seen/total_routes_seen)), colour='green')
@@ -95,13 +95,16 @@ def populate_ticks(db, start_route=105714687):
 
             ticks = get_ticks(route_ids[i])
             for tick in ticks:
-
                 total_ticks_seen += 1
                 if progress_bar:
                     pbar.update(1)
 
                 #Add user to database
                 user = tick['user']
+
+                #Ignore private ticks
+                if user is False:
+                    continue
                 user = process_user(user)
                 user_id = user['_id']
                 user_exists = users_col.find_one({"_id": user_id})
@@ -114,7 +117,7 @@ def populate_ticks(db, start_route=105714687):
                     lprint(f"User {user_id} already exists.")
 
                 #Add tick to database
-                tick = process_tick(tick)
+                tick = process_ticks(tick)
                 tick['route_id'] = route_ids[i]
                 tick_id = tick['_id']
                 tick_exists = ticks_col.find_one({"_id": tick_id})
@@ -132,8 +135,8 @@ def populate_ticks(db, start_route=105714687):
                 pbar.refresh()
 
     except Exception as e:
+        lprint(e)
         lprint("Broke on Route ID - " + str(route_ids[i]))
-        lprint("Last Known Total Comments was - " + str(int(len(route_ids)*(total_ticks_seen/total_routes_seen))))
 
 def populate_routes(db, start_id = 105905173):
     started = False
@@ -209,8 +212,8 @@ def populate_comments(db, start_route=105714687):
                 pbar.refresh()
 
     except Exception as e:
+        lprint(e)
         lprint("Broke on Route ID - " + str(route_ids[i]))
-        lprint("Last Known Total Comments was - " + str(int(len(route_ids)*(total_comments_seen/total_routes_seen))))
 
 def directory_index(directory, area_id):
     index = None
@@ -263,9 +266,14 @@ def process_comment(comment):
     return comment_copy
 
 def process_user(user):
-    user = user.copy()
-    user['_id'] = user.pop('id')
-    return user
+    user_copy = user.copy()
+    user_copy['_id'] = user_copy.pop('id')
+    return user_copy
+
+def process_ticks(tick):
+    tick_copy = tick.copy()
+    tick_copy['_id'] = tick_copy.pop('id')
+    return tick_copy
 
 # populate_comments(db, start_route=113585416)
-print(populate_ticks(db))
+populate_ticks(db)

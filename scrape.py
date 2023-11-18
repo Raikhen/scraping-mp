@@ -9,6 +9,8 @@ from logger import lprint, lpprint
 from bs4            import BeautifulSoup
 from pprint         import pprint
 
+MAX_PAGES = 1000
+
 # Uses regex to extract IDs from MP urls
 # -- e.g. 'https://www.mountainproject.com/route/105884815/moby-grape/' outputs '105884815'
 
@@ -65,9 +67,28 @@ def get_area(id):
         return get_area(id)
     return data
 
-def get_ticks(route_id):
-    url = f'https://www.mountainproject.com/api/v2/routes/{route_id}/ticks'
-    data = requests.get(url).json()
+def get_ticks_page(route_id, page_num=1):
+    url = f'https://www.mountainproject.com/api/v2/routes/{str(route_id)}/ticks?page={str(page_num)}'
+
+    try:
+        return requests.get(url).json()
+    except:
+        lprint("Too many requests... Retrying")
+        time.sleep(3)
+        return get_ticks_page(route_id, page_num)
+
+def get_ticks(route_id, start_page=1):
+    done    = False
+    data    = []
+    i       = start_page
+
+    while (not done) and (i <= MAX_PAGES):
+        response = get_ticks_page(route_id, i)
+        data += response['data']
+        
+        done = (response['next_page_url'] == None)
+        i += 1
+
     return data
 
 # Gets a route from MP given its ID
