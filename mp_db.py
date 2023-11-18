@@ -7,6 +7,8 @@ from config import progress_bar
 from resume import find_root_parent_id
 from multiprocessing.pool import ThreadPool as Pool
 from multiprocessing import cpu_count
+import os
+import multiprocessing
 from joblib import Parallel, delayed
 from tqdm import tqdm
 
@@ -137,6 +139,24 @@ def populate_ticks(db, start_route=105714687):
     except Exception as e:
         lprint(e)
         lprint("Broke on Route ID - " + str(route_ids[i]))
+
+def populate_ticks_worker():
+    lprint(multiprocessing.current_process().name)
+
+def populate_ticks_parallel(db):
+    # Get the number of CPU cores
+    num_cores = multiprocessing.cpu_count()
+
+    # Create and start threads
+    threads = []
+    for i in range(num_cores):
+        thread = multiprocessing.Process(target=populate_ticks_worker, name="Thread {}".format(i + 1))
+        threads.append(thread)
+        thread.start()
+
+    # Wait for all threads to finish
+    for thread in threads:
+        thread.join()
 
 def populate_routes(db, start_id = 105905173):
     started = False
@@ -276,4 +296,4 @@ def process_ticks(tick):
     return tick_copy
 
 # populate_comments(db, start_route=113585416)
-populate_ticks(db)
+populate_ticks_parallel(db)
