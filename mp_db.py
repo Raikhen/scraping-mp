@@ -1,7 +1,7 @@
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 from urllib.parse import quote_plus
-from scrape import get_route, get_area, get_id, get_directory, get_comments
+from scrape import get_route, get_area, get_id, get_directory, get_comments, get_ticks
 from logger import lprint, lpprint
 from config import progress_bar
 from resume import find_root_parent_id
@@ -72,6 +72,69 @@ def populate_routes_in(areas, routes, area_id, worker_id = -1):
         else: 
             populate_routes_in(areas, routes, child_id, worker_id)
 
+def populate_ticks(db, start_route=105714687):
+    #Gather collections
+    users_col = db['users']
+    ticks_col = db['ticks']
+
+    #Get route ids
+    json_route_ids = db['routes'].find({"_id": {"$exists": True}}, {"_id": 1})
+    route_ids = sorted([json["_id"] for json in json_route_ids])    #Track comments seen for progress bar
+    start_idx = route_ids.index(start_route)
+
+    total_ticks_seen = db['ticks'].count_documents({})
+    total_routes_seen = start_idx
+
+    if progress_bar:
+        pbar = tqdm(total=int(len(route_ids)*(total_ticks_seen/total_routes_seen)), colour='green')
+        pbar.update(total_ticks_seen)
+
+    try:
+        for i in range(start_idx, len(route_ids)):
+            total_routes_seen += 1
+
+            ticks = get_ticks(route_ids[i])
+            for tick in ticks:
+
+                total_ticks_seen += 1
+                if progress_bar:
+                    pbar.update(1)
+
+                #Add user to database
+                user = tick['user']
+                user = process_user(user)
+                user_id = user['_id']
+                user_exists = users_col.find_one({"_id": user_id})
+                if user_exists is None:
+                    # Object doesn't exist, so add it to the collection
+                    result = users_col.insert_one(user)
+                    lprint("New user added with id: " + str(result.inserted_id))
+                else:
+                    # Object with the same name already exists; you can update it or take other action
+                    lprint(f"User {user_id} already exists.")
+
+                #Add tick to database
+                tick = process_tick(tick)
+                tick['route_id'] = route_ids[i]
+                tick_id = tick['_id']
+                tick_exists = ticks_col.find_one({"_id": tick_id})
+                if tick_exists is None:
+                    # Object doesn't exist, so add it to the collection
+                    result = ticks_col.insert_one(tick)
+                    lprint(f"New tick added for route {route_ids[i]} with id: " + str(result.inserted_id))
+        
+                else:
+                    # Object with the same name already exists; you can update it or take other action
+                    lprint(f"Comment {tick_id} already exists.")
+
+            if progress_bar:
+                pbar.total = int(len(route_ids)*(total_ticks_seen/total_routes_seen))
+                pbar.refresh()
+
+    except Exception as e:
+        lprint("Broke on Route ID - " + str(route_ids[i]))
+        lprint("Last Known Total Comments was - " + str(int(len(route_ids)*(total_ticks_seen/total_routes_seen))))
+
 def populate_routes(db, start_id = 105905173):
     started = False
     areas = db['areas']
@@ -84,7 +147,6 @@ def populate_routes(db, start_id = 105905173):
             started = True
         if (started):
             populate_routes_in(areas, routes, area_id)
-
 
 def populate_comments(db, start_route=105714687):
     #Gather collections
@@ -205,4 +267,5 @@ def process_user(user):
     user['_id'] = user.pop('id')
     return user
 
-populate_comments(db, start_route=113585416)
+# populate_comments(db, start_route=113585416)
+print(populate_ticks(db))

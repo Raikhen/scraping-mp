@@ -97,7 +97,6 @@ def get_comments(id):
     try: 
         try: 
             soup        = BeautifulSoup(content, 'html.parser')
-
             # Create a list to store comment
 
             # Extract all comment IDs from HTML 
@@ -106,6 +105,8 @@ def get_comments(id):
 
             for t_id in comment_ids:
                 raw_comment     = soup.find(id= "Comment-" + t_id)
+                if raw_comment is None:
+                    continue
                 comment_text    = soup.find_all(id= t_id + "-full")[0].text
                 comment_time    = raw_comment.find_all(class_ = "comment-time")[0].text
                 raw_user        = raw_comment.find(class_ = 'bio').find('a')
@@ -136,9 +137,10 @@ def get_comments(id):
 
             for t_id in comment_ids:
                 raw_comment     = soup.find(id= "Comment-" + t_id)
+                if raw_comment is None:
+                    continue
                 comment_text    = soup.find_all(id= t_id + "-full")[0].text
                 comment_time    = raw_comment.find_all(class_ = "comment-time")[0].text
-                lpprint(comment_time)
                 raw_user        = raw_comment.find(class_ = 'bio').find('a')
                 if (raw_user is None):
                     #User is anonymous, create a unique ID for this user so that we can index it from 
