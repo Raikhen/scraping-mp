@@ -3,15 +3,16 @@ from pymongo.server_api import ServerApi
 from urllib.parse import quote_plus
 from scrape import get_route, get_area, get_id, get_directory, get_comments, get_ticks
 from logger import lprint, lpprint
-from config import progress_bar
+from config import progress_bar, tick_state_file
 from resume import find_root_parent_id
 from multiprocessing.pool import ThreadPool as Pool
 from multiprocessing import cpu_count
 import os
 import multiprocessing
+import threading
 from joblib import Parallel, delayed
 from tqdm import tqdm
-
+import json 
 total_threads = 64
 
 #Connect to Mongo Server in Trust Lab
@@ -30,6 +31,17 @@ except Exception as e:
     lprint(e)
 
 db = client["mountain_project"]
+
+manager = multiprocessing.Manager()
+global_state = manager.dict()
+try:
+    with open(tick_state_file, 'r') as json_file:
+        state = json.load(json_file)
+        global_state.update(state)
+except FileNotFoundError:
+    pass  # No existing state file, proceed with an empty state
+
+
 
 def populate_routes_in(areas, routes, area_id, worker_id = -1):
     area_exists = areas.find_one({"_id": int(area_id)})
@@ -153,7 +165,7 @@ def populate_ticks_worker(db, thread_num, start_info=None):
     route_ids = sorted([json["_id"] for json in json_route_ids])    #Track comments seen for progress bar
 
     # Calculate the size of each portion
-    portion_size = len(route_ids) // total_threads
+    portion_size = len(route_ids) // (total_threads + 1)
     
     # Calculate the start index for the current thread
     start_idx = thread_num * portion_size
@@ -162,16 +174,25 @@ def populate_ticks_worker(db, thread_num, start_info=None):
     end_idx = start_idx + portion_size
 
     # Adjust the end index for the last thread to include any remaining elements
-    if thread_num == total_threads - 1:
-        end_idx = len(route_ids)
+    if thread_num == total_threads:
+        end_idx = len(route_ids) - 1
 
-    if start_info is not None:
+    if start_info is not []:
         for info in start_info:
-            if thread_num == info[0]:
+            if thread_num == info[0] and info[1] != 0:
                 start_idx = info[1]
 
     try:
         for i in range(start_idx, end_idx + 1):
+
+            # Update state for the current thread for each route
+            global_state[thread_num] = {'route_idx': i, 'end_idx': end_idx, 'completed': i == end_idx}
+
+            try:
+                with open(tick_state_file, 'w') as json_file:
+                    json.dump(dict(global_state), json_file, indent=2)
+            except Exception as e:
+                print(f"Error writing to JSON file: {e}")
 
             ticks = get_ticks(route_ids[i])
             for tick in ticks:
@@ -210,13 +231,15 @@ def populate_ticks_worker(db, thread_num, start_info=None):
         lprint(f"[{thread_num}] Broke on Route ID - " + str(route_ids[i]))
 
 def populate_ticks_parallel(db):
+
     # Get the number of CPU cores
     num_cores = multiprocessing.cpu_count()
+    start_info = [(int(key), value["route_idx"]) for key, value in global_state.items()]
 
     # Create and start threads
     threads = []
     for i in range(num_cores):
-        thread = multiprocessing.Process(target=populate_ticks_worker, args=(db, i + 1))
+        thread = multiprocessing.Process(target=populate_ticks_worker, args=(db, i + 1, start_info))
         threads.append(thread)
         thread.start()
 
@@ -362,5 +385,5 @@ def process_ticks(tick):
     return tick_copy
 
 # populate_comments(db, start_route=113585416)
-# populate_ticks_parallel(db)
-populate_ticks(db)
+populate_ticks_parallel(db)
+# populate_ticks(db)
