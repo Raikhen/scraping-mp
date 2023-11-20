@@ -8,7 +8,8 @@ from utils.logger           import  lprint, lpprint
 from elosports.elo          import Elo
 
 db  = get_db()
-MAX = 3400
+MAX = 5000
+match_threshold = 100
 
 def filter_routes(route_with_ticks):
     route   = db['routes'].find_one({ '_id': route_with_ticks['_id'] })
@@ -87,23 +88,23 @@ def get_ticked_routes(user_id):
 def generate_matches():
     matches = []
 
-    print('Getting all the users ids')
+    lprint('Getting all the users ids')
 
     # Get all of the users ids
     ticks_users = db['ticks'].find({'_id': { '$exists': True } }, { 'user.id': 1 })
     user_ids    = list(set([tick['user']['id'] for tick in ticks_users[:MAX]]))
     user_ids.remove(200056064) # Ignore MP Testing Test
 
-    print(f'Got {len(user_ids)} user ids')
+    lprint(f'Got {len(user_ids)} user ids')
 
     # Add a match for every pair of routes that someone has ticked
     for idx, user_id in enumerate(user_ids):
         print(f'Generating matches for user {user_id} ({idx + 1}/{len(user_ids)})')
 
         # Get all of the routes that the user has ticked
-        print(f'Getting routes for user {user_id}')
+        lprint(f'Getting routes for user {user_id}')
         user_routes = get_ticked_routes(user_id)
-        print(f'Got {len(user_routes)} routes for user {user_id}')
+        lprint(f'Got {len(user_routes)} routes for user {user_id}')
         
         for route1 in user_routes:
             for route2 in user_routes:
@@ -114,7 +115,7 @@ def generate_matches():
                         'route2': route2
                     })
 
-        print(f'Added all the matches for user {user_id}')
+        lprint(f'Added all the matches for user {user_id}')
 
     # Randomize the order of the matches
     shuffle(matches)
@@ -132,11 +133,14 @@ def run_matches(matches):
         [m['route2']['_id'] for m in matches]
     ))
 
+    match_counter = {}
+
     # Add all of those routes to the league
     for route_id in route_ids:
         routeLeague.addPlayer(route_id)
+        match_counter[route_id] = 0
 
-    print('Added all routes to the league')
+    lprint('Added all routes to the league')
 
     for match in matches:
         route1 = match['route1']
@@ -149,6 +153,8 @@ def run_matches(matches):
             winner = route2['_id']
             loser = route1['_id']
 
+        match_counter[route1['_id']] += 1
+        match_counter[route2['_id']] += 1
         routeLeague.gameOver(winner, loser, 0)
     
     data = list(db['routes'].find(
@@ -156,21 +162,26 @@ def run_matches(matches):
         { '_id': 1, 'difficulty': 1, 'types': 1 }
     ))
 
-    filter_func = lambda e: e['difficulty'] == 'Easy 5th' or e['difficulty'][0] in ['3', '4', '5']
+    def filter_func(e):
+        res = e['difficulty'] == 'Easy 5th' or e['difficulty'][0] in ['3', '4', '5']
+        res = res and match_counter[e['_id']] >= match_threshold
+
+        return res
+
     data = list(filter(filter_func, data))
 
     for e in data:
         # Add the elo rating to the route
         e['elo'] = routeLeague.ratingDict[e['_id']]
 
-        # Add the numberical difficulty to the route
+        # Add the numerical difficulty to the route
         difficulty              = e['difficulty'].split(' ')[0]
         difficulty              = difficulty if difficulty != 'Easy' else 'Easy 5th'
         e['number_difficulty']  = grade_dict[difficulty]
 
     df = pd.DataFrame.from_dict(data)
-    print(df)
-    print(df['number_difficulty'].corr(df['elo']))
+    lprint(df)
+    lprint(df['number_difficulty'].corr(df['elo']))
 
 # Run code
 matches = generate_matches()
