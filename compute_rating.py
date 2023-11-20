@@ -1,4 +1,5 @@
 import pandas               as      pd
+from grade_utils            import  grade_dict
 from random                 import  shuffle
 from pprint                 import  pprint
 from itertools              import  groupby
@@ -24,7 +25,7 @@ except Exception as e:
 
 db = client["mountain_project"]
 
-MAX = 4000
+MAX = 5000
 
 def filter_routes(route_with_ticks):
     route = db['routes'].find_one({ '_id': route_with_ticks['_id'] })
@@ -124,11 +125,20 @@ def generate_matches():
     return matches
 
 def run_matches(matches):
+    # Initialize the league
     routeLeague = Elo(k = 20)
-    routes      = list(db['routes'].find({}))
 
-    for route in routes:
-        routeLeague.addPlayer(route['_id'])
+    # All the routes that play at least one match
+    route_ids = list(set(
+        [m['route1']['_id'] for m in matches] +
+        [m['route2']['_id'] for m in matches]
+    ))
+
+    # Add all of those routes to the league
+    for route_id in route_ids:
+        routeLeague.addPlayer(route_id)
+
+    print('Added all routes to the league')
 
     for match in matches:
         route1 = match['route1']
@@ -143,10 +153,21 @@ def run_matches(matches):
 
         routeLeague.gameOver(winner, loser, 0)
     
-    for route in routeLeague.ratingDict.keys():
-	    print(route, routeLeague.ratingDict[route])
+    data = list(db['routes'].find(
+        { '_id': { '$in': route_ids} },
+        { '_id': 1, 'difficulty': 1, 'types': 1 }
+    ))
+
+    data = list(filter(lambda e: e['difficulty'][0] not in ['M', 'W', 'A', 'C'], data))
+
+    for e in data:
+        e['elo']                = routeLeague.ratingDict[e['_id']]
+        e['number_difficulty']  = grade_dict[e['difficulty'].split(' ')[0]]
+
+    df = pd.DataFrame.from_dict(data)
+    print(df)
+    print(df['number_difficulty'].corr(df['elo']))
 
 # Run code
 matches = generate_matches()
-pprint(matches)
 run_matches(matches)
