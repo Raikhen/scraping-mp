@@ -1,35 +1,20 @@
-from pymongo.mongo_client import MongoClient
-from pymongo.server_api import ServerApi
-from urllib.parse import quote_plus
-from scrape import get_route, get_area, get_id, get_directory, get_comments, get_ticks
-from logger import lprint, lpprint
-from config import progress_bar
-from resume import find_root_parent_id
-from multiprocessing.pool import ThreadPool as Pool
-from multiprocessing import cpu_count
 import os
 import multiprocessing
-from joblib import Parallel, delayed
-from tqdm import tqdm
+from db_utils               import get_db
+from scrape                 import get_route, get_area, get_id, get_directory, get_comments, get_ticks
+from logger                 import lprint, lpprint
+from config                 import progress_bar
+from resume                 import find_root_parent_id
+from multiprocessing.pool   import ThreadPool as Pool
+from multiprocessing        import cpu_count
+from joblib                 import Parallel, delayed
+from tqdm                   import tqdm
 
+# Number of threads to use
 total_threads = 64
 
-#Connect to Mongo Server in Trust Lab
-username = quote_plus('EvilMonkey')
-password = quote_plus('&a@JREztYS5@EyPL')
-uri = 'mongodb://' + username + ':' + password + '@10.28.54.198:27017/?retryWrites=true&w=majority'
-
-# Create a new client and connect to the server
-client = MongoClient(uri, server_api=ServerApi('1'))
-
-# Send a ping to confirm a successful connection
-try:
-    client.admin.command('ping')
-    lprint("Pinged your deployment. You successfully connected to MongoDB!")
-except Exception as e:
-    lprint(e)
-
-db = client["mountain_project"]
+# Get MongoDB database
+db = get_db()
 
 def populate_routes_in(areas, routes, area_id, worker_id = -1):
     area_exists = areas.find_one({"_id": int(area_id)})

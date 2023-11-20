@@ -1,30 +1,13 @@
 import pandas               as      pd
+from db_utils               import  get_db
 from grade_utils            import  grade_dict
 from random                 import  shuffle
 from pprint                 import  pprint
 from itertools              import  groupby
-from pymongo.mongo_client   import  MongoClient
-from pymongo.server_api     import  ServerApi
-from urllib.parse           import  quote_plus
 from logger                 import  lprint, lpprint
 from elosports.elo          import Elo
-# Connect to Mongo Server in Trust Lab
-username = quote_plus('EvilMonkey')
-password = quote_plus('&a@JREztYS5@EyPL')
-uri = f'mongodb://{username}:{password}@10.28.54.198:27017/?retryWrites=true&w=majority'
 
-# Create a new client and connect to the server
-client = MongoClient(uri, server_api = ServerApi('1'))
-
-# Send a ping to confirm a successful connection
-try:
-    client.admin.command('ping')
-    lprint("Pinged your deployment. You successfully connected to MongoDB!")
-except Exception as e:
-    lprint(e)
-
-db = client["mountain_project"]
-
+db  = get_db()
 MAX = 3400
 
 def filter_routes(route_with_ticks):
