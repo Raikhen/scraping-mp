@@ -34,11 +34,12 @@ def filter_routes(route_with_ticks):
     # Single-pitch climbs only
     res = res and route['pitches'] < 2
 
-    # Only Sport and Trad routes
+    # Only Sport, Trad, and TR routes
     res = res and 'Boulder' not in route['types']
     res = res and 'Aid' not in route['types']
     res = res and 'Ice' not in route['types']
     res = res and 'Mixed' not in route['types']
+    res = res and 'Snow' not in route['types']
 
     # Only routes with a registered difficulty
     res = res and route['difficulty'] != ''
@@ -176,8 +177,13 @@ def run_matches(matches):
     data = list(filter(filter_func, data))
 
     for e in data:
-        e['elo']                = routeLeague.ratingDict[e['_id']]
-        e['number_difficulty']  = grade_dict[e['difficulty'].split(' ')[0]]
+        # Add the elo rating to the route
+        e['elo'] = routeLeague.ratingDict[e['_id']]
+
+        # Add the numberical difficulty to the route
+        difficulty              = e['difficulty'].split(' ')[0]
+        difficulty              = difficulty if difficulty != 'Easy' else 'Easy 5th'
+        e['number_difficulty']  = grade_dict[difficulty]
 
     df = pd.DataFrame.from_dict(data)
     print(df)
