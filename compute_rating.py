@@ -41,7 +41,7 @@ def filter_routes(route_with_ticks):
     res = res and 'Mixed' not in route['types']
 
     # Only routes with a registered difficulty
-    res = res and route['difficulty'][0] not in ['']
+    res = res and route['difficulty'] != ''
 
     return res
 
