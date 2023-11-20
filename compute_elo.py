@@ -1,10 +1,10 @@
 import pandas               as      pd
-from db_utils               import  get_db
-from grade_utils            import  grade_dict
+from utils.db_utils         import  get_db
+from utils.grade_utils      import  grade_dict
 from random                 import  shuffle
 from pprint                 import  pprint
 from itertools              import  groupby
-from logger                 import  lprint, lpprint
+from utils.logger           import  lprint, lpprint
 from elosports.elo          import Elo
 
 db  = get_db()
@@ -87,23 +87,23 @@ def get_ticked_routes(user_id):
 def generate_matches():
     matches = []
 
-    pprint('Getting all the users ids')
+    print('Getting all the users ids')
 
     # Get all of the users ids
     ticks_users = db['ticks'].find({'_id': { '$exists': True } }, { 'user.id': 1 })
     user_ids    = list(set([tick['user']['id'] for tick in ticks_users[:MAX]]))
     user_ids.remove(200056064) # Ignore MP Testing Test
 
-    pprint(f'Got {len(user_ids)} user ids')
+    print(f'Got {len(user_ids)} user ids')
 
     # Add a match for every pair of routes that someone has ticked
     for idx, user_id in enumerate(user_ids):
-        pprint(f'Generating matches for user {user_id} ({idx + 1}/{len(user_ids)})')
+        print(f'Generating matches for user {user_id} ({idx + 1}/{len(user_ids)})')
 
         # Get all of the routes that the user has ticked
-        pprint(f'Getting routes for user {user_id}')
+        print(f'Getting routes for user {user_id}')
         user_routes = get_ticked_routes(user_id)
-        pprint(f'Got {len(user_routes)} routes for user {user_id}')
+        print(f'Got {len(user_routes)} routes for user {user_id}')
         
         for route1 in user_routes:
             for route2 in user_routes:
@@ -114,7 +114,7 @@ def generate_matches():
                         'route2': route2
                     })
 
-        pprint(f'Added all the matches for user {user_id}')
+        print(f'Added all the matches for user {user_id}')
 
     # Randomize the order of the matches
     shuffle(matches)

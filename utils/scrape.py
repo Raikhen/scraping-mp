@@ -4,8 +4,8 @@ import time
 import zlib
 import requests
 import dateparser
-import pandas as pd
-from logger import lprint, lpprint
+import pandas       as pd
+from utils.logger   import lprint, lpprint
 from bs4            import BeautifulSoup
 from pprint         import pprint
 

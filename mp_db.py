@@ -1,10 +1,10 @@
 import os
 import multiprocessing
-from db_utils               import get_db
-from scrape                 import get_route, get_area, get_id, get_directory, get_comments, get_ticks
-from logger                 import lprint, lpprint
+from utils.db_utils         import get_db
+from utils.scrape           import get_route, get_area, get_id, get_directory, get_comments, get_ticks
+from utils.logger           import lprint, lpprint
 from config                 import progress_bar
-from resume                 import find_root_parent_id
+from utils.resume           import find_root_parent_id
 from multiprocessing.pool   import ThreadPool as Pool
 from multiprocessing        import cpu_count
 from joblib                 import Parallel, delayed

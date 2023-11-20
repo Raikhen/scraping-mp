@@ -1,5 +1,5 @@
 import json
-from logger                 import  lprint, lpprint
+from utils.logger           import  lprint, lpprint
 from pymongo.mongo_client   import  MongoClient
 from pymongo.server_api     import  ServerApi
 from urllib.parse           import  quote_plus
