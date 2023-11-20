@@ -25,11 +25,25 @@ except Exception as e:
 
 db = client["mountain_project"]
 
-MAX = 5000
+MAX = 3400
 
 def filter_routes(route_with_ticks):
-    route = db['routes'].find_one({ '_id': route_with_ticks['_id'] })
-    return route['pitches'] < 2 and 'Boulder' not in route['types']
+    route   = db['routes'].find_one({ '_id': route_with_ticks['_id'] })
+    res     = True
+
+    # Single-pitch climbs only
+    res = res and route['pitches'] < 2
+
+    # Only Sport and Trad routes
+    res = res and 'Boulder' not in route['types']
+    res = res and 'Aid' not in route['types']
+    res = res and 'Ice' not in route['types']
+    res = res and 'Mixed' not in route['types']
+
+    # Only routes with a registered difficulty
+    res = res and route['difficulty'][0] not in ['']
+
+    return res
 
 def group_by_route(ticks):
     ticked_routes_dict = {}
@@ -158,7 +172,8 @@ def run_matches(matches):
         { '_id': 1, 'difficulty': 1, 'types': 1 }
     ))
 
-    data = list(filter(lambda e: e['difficulty'][0] not in ['M', 'W', 'A', 'C'], data))
+    filter_func = lambda e: e['difficulty'] == 'Easy 5th' or e['difficulty'][0] in ['3', '4', '5']
+    data = list(filter(filter_func, data))
 
     for e in data:
         e['elo']                = routeLeague.ratingDict[e['_id']]
