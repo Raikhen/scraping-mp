@@ -1,4 +1,5 @@
 import pandas               as      pd
+from random                 import  shuffle
 from pprint                 import  pprint
 from itertools              import  groupby
 from pymongo.mongo_client   import  MongoClient
@@ -23,7 +24,7 @@ except Exception as e:
 
 db = client["mountain_project"]
 
-MAX = 100
+MAX = 4000
 
 def filter_routes(route_with_ticks):
     route = db['routes'].find_one({ '_id': route_with_ticks['_id'] })
@@ -87,13 +88,23 @@ def get_ticked_routes(user_id):
 def generate_matches():
     matches = []
 
+    pprint('Getting all the users ids')
+
     # Get all of the users ids
     ticks_users = db['ticks'].find({'_id': { '$exists': True } }, { 'user.id': 1 })
     user_ids    = list(set([tick['user']['id'] for tick in ticks_users[:MAX]]))
+    user_ids.remove(200056064) # Ignore MP Testing Test
+
+    pprint(f'Got {len(user_ids)} user ids')
 
     # Add a match for every pair of routes that someone has ticked
-    for user_id in user_ids:
+    for idx, user_id in enumerate(user_ids):
+        pprint(f'Generating matches for user {user_id} ({idx + 1}/{len(user_ids)})')
+
+        # Get all of the routes that the user has ticked
+        pprint(f'Getting routes for user {user_id}')
         user_routes = get_ticked_routes(user_id)
+        pprint(f'Got {len(user_routes)} routes for user {user_id}')
         
         for route1 in user_routes:
             for route2 in user_routes:
@@ -104,28 +115,38 @@ def generate_matches():
                         'route2': route2
                     })
 
-    return matches
+        pprint(f'Added all the matches for user {user_id}')
 
-pprint(generate_matches())
+    # Randomize the order of the matches
+    shuffle(matches)
+
+    # Return the matches
+    return matches
 
 def run_matches(matches):
     routeLeague = Elo(k = 20)
+    routes      = list(db['routes'].find({}))
 
-    for route in list(db['routes'].find({})):
+    for route in routes:
         routeLeague.addPlayer(route['_id'])
 
     for match in matches:
-        route1 = match['route1']['_id']
-        route2 = match['route2']['_id']
-        r1_score = match['route1']['score']
-        r2_score = match['route2']['score']
+        route1 = match['route1']
+        route2 = match['route2']
         
-        if r1_score>r2_score:
-            winner = route1
-            loser = route2
+        if route1['score'] > route1['score']:
+            winner = route1['_id']
+            loser = route2['_id']
         else:
-            winner = route2
-            loser = route1
+            winner = route2['_id']
+            loser = route1['_id']
 
-        Elo.gameOver(routeLeague, winner, loser)
+        routeLeague.gameOver(winner, loser, 0)
+    
+    for route in routeLeague.ratingDict.keys():
+	    print(route, routeLeague.ratingDict[route])
 
+# Run code
+matches = generate_matches()
+pprint(matches)
+run_matches(matches)
