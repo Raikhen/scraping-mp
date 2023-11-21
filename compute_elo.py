@@ -91,8 +91,7 @@ def generate_matches():
     lprint('Getting all the users ids')
 
     # Get all of the users ids
-    ticks_users = db['ticks'].find({'_id': { '$exists': True } }, { 'user.id': 1 })
-    user_ids    = list(set([tick['user']['id'] for tick in ticks_users[:MAX]]))
+    user_ids = db['ticks'].distinct('user.id')
     user_ids.remove(200056064) # Ignore MP Testing Test
 
     lprint(f'Got {len(user_ids)} user ids')
@@ -186,3 +185,4 @@ def run_matches(matches):
 # Run code
 matches = generate_matches()
 run_matches(matches)
+
