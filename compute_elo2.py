@@ -67,7 +67,7 @@ def update_ratings(user_ticks, valid_routes, ratings, counter):
     # Update ratings
     for route1 in user_ticked_routes:
         for route2 in user_ticked_routes:
-            if route1 != route2 and -1 not in [scores[route1], scores[route2]]:
+            if route1 != route2 and scores[route1] != -1 and scores[route2] != -1:
                 # Get the result of the match
                 result = scores_diff(scores[route1], scores[route2])
 
@@ -78,6 +78,8 @@ def update_ratings(user_ticks, valid_routes, ratings, counter):
                 # Update ratings based on outcome
                 ratings[route1] += K * (result - expected_a)
                 ratings[route2] += K * (1 - result - expected_b)
+
+                lprint(f'Updating ratings by {K * (result - expected_a)} {K * (1 - result - expected_b)}')
 
     return ratings
 
