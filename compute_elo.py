@@ -5,11 +5,14 @@ from random                 import  shuffle
 from pprint                 import  pprint
 from itertools              import  groupby
 from utils.logger           import  lprint, lpprint
-from elosports.elo          import Elo
+from elosports.elo          import  Elo
 
+# Params
+MAX = 6000
+MATCH_THRESHOLD = 3000
+
+# Connect to the database
 db  = get_db()
-MAX = 5000
-match_threshold = 100
 
 def filter_routes(route_with_ticks):
     route   = db['routes'].find_one({ '_id': route_with_ticks['_id'] })
@@ -98,7 +101,7 @@ def generate_matches():
 
     # Add a match for every pair of routes that someone has ticked
     for idx, user_id in enumerate(user_ids):
-        print(f'Generating matches for user {user_id} ({idx + 1}/{len(user_ids)})')
+        lprint(f'Generating matches for user {user_id} ({idx + 1}/{len(user_ids)})')
 
         # Get all of the routes that the user has ticked
         lprint(f'Getting routes for user {user_id}')
@@ -122,40 +125,46 @@ def generate_matches():
     # Return the matches
     return matches
 
+def calculate_elo(route_ids, matches, k = 32, initial_rating = 1200):
+    # Dictionary to store the ratings of each player
+    ratings = { route_id: initial_rating for route_id in route_ids }
+
+    # Function to calculate the expected probability of winning
+    def expected_result(rating_a, rating_b):
+        return 1 / (1 + 10 ** ((rating_b - rating_a) / 400))
+
+    # Update Elo ratings based on match results
+    for match in matches:
+        # Get the contenders' ids
+        route1_id = match['route1']['_id']
+        route2_id = match['route2']['_id']
+
+        # Get the result of the match
+        result = (match['route1']['score'] - match['route2']['score'] + 5) / 10
+
+        # Calculate expected probability of winning
+        expected_a = expected_result(ratings[route1_id], ratings[route2_id])
+        expected_b = expected_result(ratings[route2_id], ratings[route1_id])
+
+        # Update ratings based on outcome
+        ratings[route1_id] += k * (result - expected_a)
+        ratings[route2_id] += k * (1 - result - expected_b)
+
+    return ratings
+
 def run_matches(matches):
-    # Initialize the league
-    routeLeague = Elo(k = 20)
-
-    # All the routes that play at least one match
-    route_ids = list(set(
-        [m['route1']['_id'] for m in matches] +
-        [m['route2']['_id'] for m in matches]
-    ))
-
     match_counter = {}
 
-    # Add all of those routes to the league
-    for route_id in route_ids:
-        routeLeague.addPlayer(route_id)
-        match_counter[route_id] = 0
-
-    lprint('Added all routes to the league')
-
     for match in matches:
-        route1 = match['route1']
-        route2 = match['route2']
-        
-        if route1['score'] > route1['score']:
-            winner = route1['_id']
-            loser = route2['_id']
-        else:
-            winner = route2['_id']
-            loser = route1['_id']
+        for i in [1, 2]:
+            if match[f'route{i}']['_id'] in match_counter:
+                match_counter[match[f'route{i}']['_id']] += 1
+            else:
+                match_counter[match[f'route{i}']['_id']] = 0
 
-        match_counter[route1['_id']] += 1
-        match_counter[route2['_id']] += 1
-        routeLeague.gameOver(winner, loser, 0)
-    
+    route_ids   = list(match_counter.keys())  
+    ratings     = calculate_elo(route_ids, matches)
+
     data = list(db['routes'].find(
         { '_id': { '$in': route_ids} },
         { '_id': 1, 'difficulty': 1, 'types': 1 }
@@ -163,7 +172,7 @@ def run_matches(matches):
 
     def filter_func(e):
         res = e['difficulty'] == 'Easy 5th' or e['difficulty'][0] in ['3', '4', '5']
-        res = res and match_counter[e['_id']] >= match_threshold
+        res = res and match_counter[e['_id']] >= MATCH_THRESHOLD
 
         return res
 
@@ -171,7 +180,7 @@ def run_matches(matches):
 
     for e in data:
         # Add the elo rating to the route
-        e['elo'] = routeLeague.ratingDict[e['_id']]
+        e['elo'] = ratings[e['_id']]
 
         # Add the numerical difficulty to the route
         difficulty              = e['difficulty'].split(' ')[0]
@@ -179,7 +188,7 @@ def run_matches(matches):
         e['number_difficulty']  = grade_dict[difficulty]
 
     df = pd.DataFrame.from_dict(data)
-    lprint(df)
+    lprint(df.to_string())
     lprint(df['number_difficulty'].corr(df['elo']))
 
 # Run code
