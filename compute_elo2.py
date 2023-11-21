@@ -6,8 +6,8 @@ from utils.logger           import  lprint, lpprint
 # Params
 K                   = 32
 BASE                = 1200
-MIN_ROUTES_PER_USER = 50
-MIN_USERS           = 100
+MIN_ROUTES_PER_USER = 30
+MIN_USERS           = 20
 
 # Connect to the database
 db = get_db()
@@ -48,7 +48,7 @@ def update_ratings(user_ticks, valid_routes, ratings, counter):
             ratings[route] = BASE
         
         # Update counter
-        if len(user_ticked_routes) > MIN_ROUTES_PER_USER:
+        if len(user_ticked_routes) >= MIN_ROUTES_PER_USER:
             if route not in counter:
                 counter[route] = 1
             else:
@@ -114,7 +114,7 @@ def run_matches():
 
     def f(route):
         s = set(['Boulder', 'Aid', 'Ice', 'Mixed', 'Snow'])
-        return bool(set(route['types']).intersection(s))
+        return not set(route['types']).intersection(s)
 
     lprint("Aggregating data...")
     ticks_grouped_by_user   = list(ticks_col.aggregate(tick_pipeline))
@@ -136,7 +136,7 @@ def run_matches():
 
     for route in valid_routes:
         if route['_id'] in ratings.keys() and route['_id'] in counter:
-            if  counter[route['_id']] > MIN_USERS:
+            if counter[route['_id']] >= MIN_USERS:
                 # Add the elo rating to the route
                 route['elo_rating'] = ratings[route['_id']]
 
