@@ -103,14 +103,16 @@ def run_matches():
         }
     ]
 
+    def f(route):
+        s = set(['Boulder', 'Aid', 'Ice', 'Mixed', 'Snow'])
+        return bool(set(route['types']).intersection(s))
+
     lprint("Aggregating data...")
     ticks_grouped_by_user   = list(ticks_col.aggregate(tick_pipeline))
     valid_routes            = list(routes_col.aggregate(route_pipeline))
+    valid_routes            = list(filter(f, valid_routes))    
     valid_route_ids         = [route['_id'] for route in valid_routes]
     lprint("Data succesfully aggregated!")
-
-    lprint([f"{route['types']} {route['difficulty']}" for route in valid_routes])
-    # TODO: fix type filter; it isn't working properly...
 
     # Initialize ratings
     ratings = {}
