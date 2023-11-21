@@ -136,7 +136,7 @@ def run_matches():
 
     for route in valid_routes:
         if route['_id'] in ratings.keys() and route['_id'] in counter:
-            if  counter[route['_id']] > MIN_USERS
+            if  counter[route['_id']] > MIN_USERS:
                 # Add the elo rating to the route
                 route['elo_rating'] = ratings[route['_id']]
 
