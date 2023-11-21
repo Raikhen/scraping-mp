@@ -6,8 +6,8 @@ from utils.logger           import  lprint, lpprint
 # Params
 K                   = 32
 BASE                = 1200
-MIN_ROUTES_PER_USER = 30
-MIN_USERS           = 20
+MIN_ROUTES_PER_USER = 50
+MIN_USERS           = 50
 
 # Connect to the database
 db = get_db()
@@ -128,7 +128,7 @@ def run_matches():
     counter = {}
 
     # Update ratings for each user
-    for i, user_ticks in enumerate(ticks_grouped_by_user[:5000]):
+    for i, user_ticks in enumerate(ticks_grouped_by_user):
         lprint(f'Processing user {i + 1} of {len(ticks_grouped_by_user)}')
         update_ratings(user_ticks['ticks'], valid_route_ids, ratings, counter)
 
