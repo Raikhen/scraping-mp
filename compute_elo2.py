@@ -6,8 +6,9 @@ from utils.logger           import  lprint, lpprint
 # Params
 K                   = 32
 BASE                = 1200
-MIN_ROUTES_PER_USER = 50
-MIN_USERS           = 50
+MIN_ROUTES_PER_USER = 30
+MIN_USERS           = 20
+MAX_USERS           = 6000
 
 # Connect to the database
 db = get_db()
@@ -24,10 +25,13 @@ def get_score(user_ticks):
         return 2
     elif 'Redpoint' in lead_styles or 'Pinkpoint' in lead_styles:
         return 3
-    elif 'TR' in styles or 'Follow' in styles or 'Fell/Hung' in lead_styles:
-        return 5
-    else:
+    elif 'Fell/Hung' in lead_styles:
         return 4
+    else:
+        return -1
+
+def scores_diff(s1, s2):
+    return (s1 - s2 + 4) / 8
 
 def update_ratings(user_ticks, valid_routes, ratings, counter):
     # Extract all routes ticked by the user
@@ -44,15 +48,17 @@ def update_ratings(user_ticks, valid_routes, ratings, counter):
         route_ticks     = filter(lambda t: t['route_id'] == route, user_ticks)
         scores[route]   = get_score(route_ticks)
         
-        if route not in ratings:
-            ratings[route] = BASE
-        
-        # Update counter
-        if len(user_ticked_routes) >= MIN_ROUTES_PER_USER:
-            if route not in counter:
-                counter[route] = 1
-            else:
-                counter[route] += 1
+        if scores[route] != -1:
+            # Set initial rating
+            if route not in ratings:
+                ratings[route] = BASE
+            
+            # Update counter
+            if len(user_ticked_routes) >= MIN_ROUTES_PER_USER:
+                if route not in counter:
+                    counter[route] = 1
+                else:
+                    counter[route] += 1
 
     # Function to calculate the expected probability of winning
     def expected_result(rating_a, rating_b):
@@ -61,9 +67,9 @@ def update_ratings(user_ticks, valid_routes, ratings, counter):
     # Update ratings
     for route1 in user_ticked_routes:
         for route2 in user_ticked_routes:
-            if route1 != route2:
+            if route1 != route2 and -1 not in [scores[route1], scores[route2]]:
                 # Get the result of the match
-                result = (scores[route1] - scores[route2] + 5) / 10
+                result = scores_diff(scores[route1], scores[route2])
 
                 # Calculate expected probability of winning
                 expected_a = expected_result(ratings[route1], ratings[route1])
@@ -105,7 +111,8 @@ def run_matches():
                                 '$in': ['$types', ['Boulder', 'Aid', 'Ice', 'Mixed', 'Snow']]
                             }
                         },  # Only Sport, Trad, and TR routes
-                        { '$ne': ['$difficulty', ''] }  # Only routes with a registered difficulty
+                        { '$ne': ['$difficulty', ''] },  # Only routes with a registered difficulty
+                        { '$ne': ['$parent_id', '112166257'] }  # No generic routes
                     ]
                 }
             }
@@ -128,7 +135,7 @@ def run_matches():
     counter = {}
 
     # Update ratings for each user
-    for i, user_ticks in enumerate(ticks_grouped_by_user):
+    for i, user_ticks in enumerate(ticks_grouped_by_user[:MAX_USERS]):
         lprint(f'Processing user {i + 1} of {len(ticks_grouped_by_user)}')
         update_ratings(user_ticks['ticks'], valid_route_ids, ratings, counter)
 
