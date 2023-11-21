@@ -135,18 +135,19 @@ def run_matches():
     data = []
 
     for route in valid_routes:
-        if route['_id'] in ratings.keys() and counter[route['_id']] > MIN_USERS:
-            # Add the elo rating to the route
-            route['elo_rating'] = ratings[route['_id']]
+        if route['_id'] in ratings.keys() and route['_id'] in counter:
+            if  counter[route['_id']] > MIN_USERS
+                # Add the elo rating to the route
+                route['elo_rating'] = ratings[route['_id']]
 
-            # Add the numerical difficulty to the route
-            difficulty              = route['difficulty'].split(' ')[0]
-            difficulty              = difficulty if difficulty != 'Easy' else 'Easy 5th'
-            route['difficulty_num'] = grade_dict[difficulty]
+                # Add the numerical difficulty to the route
+                difficulty              = route['difficulty'].split(' ')[0]
+                difficulty              = difficulty if difficulty != 'Easy' else 'Easy 5th'
+                route['difficulty_num'] = grade_dict[difficulty]
 
-            # Add to data for dataframe
-            keys = ['_id', 'difficulty', 'difficulty_num', 'elo_rating', 'types']
-            data.append({ key: route[key] for key in keys })
+                # Add to data for dataframe
+                keys = ['_id', 'difficulty', 'difficulty_num', 'elo_rating', 'types']
+                data.append({ key: route[key] for key in keys })
 
     # Make dataframe
     df = pd.DataFrame.from_dict(data)
