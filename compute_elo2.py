@@ -4,8 +4,10 @@ from utils.grade_utils      import  grade_dict
 from utils.logger           import  lprint, lpprint
 
 # Params
-K       = 32
-BASE    = 1200
+K                   = 32
+BASE                = 1200
+MIN_ROUTES_PER_USER = 50
+MIN_USERS           = 100
 
 # Connect to the database
 db = get_db()
@@ -27,7 +29,7 @@ def get_score(user_ticks):
     else:
         return 4
 
-def update_ratings(user_ticks, valid_routes, ratings):
+def update_ratings(user_ticks, valid_routes, ratings, counter):
     # Extract all routes ticked by the user
     user_ticked_routes = set()
     for tick in user_ticks:
@@ -35,7 +37,7 @@ def update_ratings(user_ticks, valid_routes, ratings):
 
     # Filter invalid routes
     user_ticked_routes.intersection_update(valid_routes)
-    
+
     # Compute scores and set initial ratings if necessary
     scores = {}
     for route in user_ticked_routes:
@@ -44,6 +46,13 @@ def update_ratings(user_ticks, valid_routes, ratings):
         
         if route not in ratings:
             ratings[route] = BASE
+        
+        # Update counter
+        if len(user_ticked_routes) > MIN_ROUTES_PER_USER:
+            if route not in counter:
+                counter[route] = 1
+            else:
+                counter[route] += 1
 
     # Function to calculate the expected probability of winning
     def expected_result(rating_a, rating_b):
@@ -116,14 +125,17 @@ def run_matches():
 
     # Initialize ratings
     ratings = {}
+    counter = {}
 
     # Update ratings for each user
     for i, user_ticks in enumerate(ticks_grouped_by_user[:5000]):
         lprint(f'Processing user {i + 1} of {len(ticks_grouped_by_user)}')
-        update_ratings(user_ticks['ticks'], valid_route_ids, ratings)
+        update_ratings(user_ticks['ticks'], valid_route_ids, ratings, counter)
+
+    data = []
 
     for route in valid_routes:
-        if route['_id'] in ratings.keys():
+        if route['_id'] in ratings.keys() and counter[route['_id']] > MIN_USERS:
             # Add the elo rating to the route
             route['elo_rating'] = ratings[route['_id']]
 
@@ -132,9 +144,16 @@ def run_matches():
             difficulty              = difficulty if difficulty != 'Easy' else 'Easy 5th'
             route['difficulty_num'] = grade_dict[difficulty]
 
-    df = pd.DataFrame.from_dict(valid_routes)
+            # Add to data for dataframe
+            keys = ['_id', 'difficulty', 'difficulty_num', 'elo_rating', 'types']
+            data.append({ key: route[key] for key in keys })
+
+    # Make dataframe
+    df = pd.DataFrame.from_dict(data)
+
+    # Print dataframe
     lprint(df.to_string())
-    
+
     return df['difficulty_num'].corr(df['elo_rating'])
 
 lprint(run_matches())
