@@ -69,6 +69,8 @@ def update_ratings(user_ticks, valid_routes, ratings, counter):
         for route2 in user_ticked_routes:
             if route1 != route2 and scores[route1] != -1 and scores[route2] != -1:
                 # Get the result of the match
+                lprint(f'Scores: {scores[route1]} {scores[route2]}')
+
                 result = scores_diff(scores[route1], scores[route2])
 
                 lprint(f'Updating ratings for {route1} vs {route2} with result {result}')
