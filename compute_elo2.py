@@ -71,6 +71,9 @@ def update_ratings(user_ticks, valid_routes, ratings, counter):
                 # Get the result of the match
                 result = scores_diff(scores[route1], scores[route2])
 
+                lprint(f'Updating ratings for {route1} vs {route2} with result {result}')
+                lprint(f'Current ratings: {ratings[route1]} {ratings[route2]}')
+
                 # Calculate expected probability of winning
                 expected_a = expected_result(ratings[route1], ratings[route1])
                 expected_b = expected_result(ratings[route2], ratings[route2])
