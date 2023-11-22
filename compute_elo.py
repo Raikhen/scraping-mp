@@ -9,7 +9,7 @@ K                   = 1
 BASE                = 2000
 MIN_ROUTES_PER_USER = 10
 MIN_USERS           = 50
-MAX_USERS           = 2 ** 50
+MAX_USERS           = 10000
 
 # Connect to the database
 db = get_db()
@@ -68,17 +68,24 @@ def update_ratings(user_ticks, valid_routes, ratings, counter):
     # Update ratings
     for route1 in user_ticked_routes:
         for route2 in user_ticked_routes:
-            if route1 != route2 and scores[route1] != -1 and scores[route2] != -1:
-                # Get the result of the match
-                result = scores_diff(scores[route1], scores[route2])
+            # Skip update if the routes are the same or have the same score
+            if route1 == route2 or scores[route1] == scores[route2]:
+                continue
 
-                # Calculate expected probability of winning
-                expected_a = expected_result(ratings[route1], ratings[route1])
-                expected_b = expected_result(ratings[route2], ratings[route2])
+            # Skip update if one of the routes has no score
+            if -1 in [scores[route1], scores[route2]]:
+                continue
 
-                # Update ratings based on outcome
-                ratings[route1] += K * (result - expected_a)
-                ratings[route2] += K * (1 - result - expected_b)
+            # Get the result of the match
+            result = scores_diff(scores[route1], scores[route2])
+
+            # Calculate expected probability of winning
+            expected_a = expected_result(ratings[route1], ratings[route1])
+            expected_b = expected_result(ratings[route2], ratings[route2])
+
+            # Update ratings based on outcome
+            ratings[route1] += K * (result - expected_a)
+            ratings[route2] += K * (1 - result - expected_b)
 
     return ratings
 
@@ -132,17 +139,17 @@ def run_matches():
         s = set(['Boulder', 'Aid', 'Ice', 'Mixed', 'Snow'])
         return not set(route['types']).intersection(s)
 
-    lprint("Aggregating data...")
+    # Get all valid routes and ticks
     ticks_grouped_by_user   = list(ticks_col.aggregate(tick_pipeline))
     valid_routes            = list(routes_col.aggregate(route_pipeline))
     valid_routes            = list(filter(f, valid_routes))    
     valid_route_ids         = [route['_id'] for route in valid_routes]
-    lprint("Data succesfully aggregated!")
 
     # Initialize ratings
     ratings = {}
     counter = {}
 
+    # Shuffle the users, only makes sense when MAX_USERS is small
     shuffle(ticks_grouped_by_user)
 
     # Update ratings for each user
@@ -175,6 +182,3 @@ def run_matches():
 
     # And return it
     return df
-
-def get_corr(df):
-    return df['difficulty_num'].corr(df['elo_rating'])
