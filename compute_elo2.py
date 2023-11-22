@@ -46,7 +46,10 @@ def update_ratings(user_ticks, valid_routes, ratings, counter):
     # Compute scores and set initial ratings if necessary
     scores = {}
     for route in user_ticked_routes:
-        route_ticks     = filter(lambda t: t['route_id'] == route, user_ticks)
+        route_ticks     = list(filter(lambda t: t['route_id'] == route, user_ticks))
+
+        lprint(f'user_ticks = {user_ticks}, route_ticks = {route_ticks}')
+
         scores[route]   = get_score(route_ticks)
 
         lead_styles = [t['leadStyle'] for t in list(route_ticks)]
