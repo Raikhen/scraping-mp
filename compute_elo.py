@@ -69,7 +69,7 @@ def update_ratings(user_ticks, valid_routes, ratings, counter):
     for route1 in user_ticked_routes:
         for route2 in user_ticked_routes:
             # Skip update if the routes are the same or have the same score
-            if route1 == route2 or scores[route1] == scores[route2]:
+            if route1 == route2: # or scores[route1] == scores[route2]:
                 continue
 
             # Skip update if one of the routes has no score

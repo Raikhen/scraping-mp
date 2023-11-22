@@ -6,3 +6,6 @@ def get_corr(df):
 
 def plot(df):
     df.plot(x='difficulty_num', y='elo_rating', kind='scatter')
+
+df = run_matches()
+print(get_corr(df))
