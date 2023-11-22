@@ -1,60 +1,22 @@
-import pandas               as      pd
+import pandas as pd
+from random                 import  shuffle
 from utils.db_utils         import  get_db
 from utils.grade_utils      import  grade_dict
-from random                 import  shuffle
-from pprint                 import  pprint
-from itertools              import  groupby
 from utils.logger           import  lprint, lpprint
-from elosports.elo          import  Elo
 
 # Params
-MAX = 6000
-MATCH_THRESHOLD = 3000
+K                   = 1
+BASE                = 2000
+MIN_ROUTES_PER_USER = 10
+MIN_USERS           = 50
+MAX_USERS           = 2 ** 50
 
 # Connect to the database
-db  = get_db()
+db = get_db()
 
-def filter_routes(route_with_ticks):
-    route   = db['routes'].find_one({ '_id': route_with_ticks['_id'] })
-    res     = True
-
-    # Single-pitch climbs only
-    res = res and route['pitches'] < 2
-
-    # Only Sport, Trad, and TR routes
-    res = res and 'Boulder' not in route['types']
-    res = res and 'Aid' not in route['types']
-    res = res and 'Ice' not in route['types']
-    res = res and 'Mixed' not in route['types']
-    res = res and 'Snow' not in route['types']
-
-    # Only routes with a registered difficulty
-    res = res and route['difficulty'] != ''
-
-    return res
-
-def group_by_route(ticks):
-    ticked_routes_dict = {}
-
-    for tick in ticks:
-        if tick['route_id'] in ticked_routes_dict:
-            ticked_routes_dict[tick['route_id']].append(tick)
-        else:
-            ticked_routes_dict[tick['route_id']] = [tick]
-
-    ticked_routes = []
-
-    for route_id in ticked_routes_dict:
-        ticked_routes.append({
-            '_id': route_id,
-            'ticks': ticked_routes_dict[route_id]
-        })
-
-    return ticked_routes
-
-def get_score(route):
-    styles      = [tick['style'] for tick in route['ticks']]
-    lead_styles = [tick['leadStyle'] for tick in route['ticks']]
+def get_score(user_ticks):
+    styles      = [tick['style'] for tick in user_ticks]
+    lead_styles = [tick['leadStyle'] for tick in user_ticks]
     
     if 'Solo' in styles:
         return 0
@@ -64,134 +26,155 @@ def get_score(route):
         return 2
     elif 'Redpoint' in lead_styles or 'Pinkpoint' in lead_styles:
         return 3
-    elif 'TR' in styles or 'Follow' in styles or 'Fell/Hung' in lead_styles:
-        return 5
-    else:
+    elif 'Fell/Hung' in lead_styles:
         return 4
+    else:
+        return -1
 
-def get_ticked_routes(user_id):
-    # Get all of the user's ticks
-    user_ticks      = db['ticks'].find({ 'user.id': user_id })
-    user_ticks_list = list(user_ticks)
+def scores_diff(s1, s2):
+    return (s1 - s2 + 4) / 8
 
-    # Group ticks by route and filter out boulder problems and multi-pitch routes
-    user_routes     = []
-    all_user_routes = group_by_route(user_ticks_list)
+def update_ratings(user_ticks, valid_routes, ratings, counter):
+    # Extract all routes ticked by the user
+    user_ticked_routes = set()
+    for tick in user_ticks:
+        user_ticked_routes.add(tick['route_id'])
 
-    # Filter routes and score each of them
-    for route in all_user_routes:
-        if filter_routes(route):
-            user_routes.append({
-                '_id': route['_id'],
-                'score': get_score(route)
-            })
-    
-    return user_routes
+    # Filter invalid routes
+    user_ticked_routes.intersection_update(valid_routes)
 
-def generate_matches():
-    matches = []
+    # Compute scores and set initial ratings if necessary
+    scores = {}
+    for route in user_ticked_routes:
+        route_ticks     = list(filter(lambda t: t['route_id'] == route, user_ticks))
+        scores[route]   = get_score(route_ticks)
 
-    lprint('Getting all the users ids')
-
-    # Get all of the users ids
-    user_ids = db['ticks'].distinct('user.id')
-    user_ids.remove(200056064) # Ignore MP Testing Test
-
-    lprint(f'Got {len(user_ids)} user ids')
-
-    # Add a match for every pair of routes that someone has ticked
-    for idx, user_id in enumerate(user_ids):
-        lprint(f'Generating matches for user {user_id} ({idx + 1}/{len(user_ids)})')
-
-        # Get all of the routes that the user has ticked
-        lprint(f'Getting routes for user {user_id}')
-        user_routes = get_ticked_routes(user_id)
-        lprint(f'Got {len(user_routes)} routes for user {user_id}')
-        
-        for route1 in user_routes:
-            for route2 in user_routes:
-                if route1['_id'] != route2['_id']:
-                    matches.append({
-                        'user_id': user_id,
-                        'route1': route1,
-                        'route2': route2
-                    })
-
-        lprint(f'Added all the matches for user {user_id}')
-
-    # Randomize the order of the matches
-    shuffle(matches)
-
-    # Return the matches
-    return matches
-
-def calculate_elo(route_ids, matches, k = 32, initial_rating = 1200):
-    # Dictionary to store the ratings of each player
-    ratings = { route_id: initial_rating for route_id in route_ids }
+        if scores[route] != -1:
+            # Set initial rating
+            if route not in ratings:
+                ratings[route] = BASE
+            
+            # Update counter
+            if len(user_ticked_routes) >= MIN_ROUTES_PER_USER:
+                if route not in counter:
+                    counter[route] = 1
+                else:
+                    counter[route] += 1
 
     # Function to calculate the expected probability of winning
     def expected_result(rating_a, rating_b):
         return 1 / (1 + 10 ** ((rating_b - rating_a) / 400))
 
-    # Update Elo ratings based on match results
-    for match in matches:
-        # Get the contenders' ids
-        route1_id = match['route1']['_id']
-        route2_id = match['route2']['_id']
+    # Update ratings
+    for route1 in user_ticked_routes:
+        for route2 in user_ticked_routes:
+            if route1 != route2 and scores[route1] != -1 and scores[route2] != -1:
+                # Get the result of the match
+                result = scores_diff(scores[route1], scores[route2])
 
-        # Get the result of the match
-        result = (match['route1']['score'] - match['route2']['score'] + 5) / 10
+                # Calculate expected probability of winning
+                expected_a = expected_result(ratings[route1], ratings[route1])
+                expected_b = expected_result(ratings[route2], ratings[route2])
 
-        # Calculate expected probability of winning
-        expected_a = expected_result(ratings[route1_id], ratings[route2_id])
-        expected_b = expected_result(ratings[route2_id], ratings[route1_id])
-
-        # Update ratings based on outcome
-        ratings[route1_id] += k * (result - expected_a)
-        ratings[route2_id] += k * (1 - result - expected_b)
+                # Update ratings based on outcome
+                ratings[route1] += K * (result - expected_a)
+                ratings[route2] += K * (1 - result - expected_b)
 
     return ratings
 
-def run_matches(matches):
-    match_counter = {}
+def run_matches():
+    ticks_col = db['ticks']
+    routes_col = db['routes']
 
-    for match in matches:
-        for i in [1, 2]:
-            if match[f'route{i}']['_id'] in match_counter:
-                match_counter[match[f'route{i}']['_id']] += 1
-            else:
-                match_counter[match[f'route{i}']['_id']] = 0
+    tick_pipeline = [
+        {
+            '$match': {
+                '$or': [
+                    {'style': 'Solo'},
+                    {'leadStyle': {'$ne': ''}}
+                ]
+            }
+        },
+        {
+            '$group': 
+            {
+                '_id': '$user.id', 
+                'ticks': {'$push': {
+                        '_id': '$_id',
+                        'route_id': '$route_id',
+                        'style': '$style',
+                        'leadStyle': '$leadStyle'
+                    }}
+            }
+        }
+    ]
 
-    route_ids   = list(match_counter.keys())  
-    ratings     = calculate_elo(route_ids, matches)
+    route_pipeline = [
+        {
+            '$match': {
+                '$expr': {
+                    '$and': [
+                        { '$lt': ['$pitches', 2] },  # Single-pitch climbs only
+                        {
+                            '$not': {
+                                '$in': ['$types', ['Boulder', 'Aid', 'Ice', 'Mixed', 'Snow']]
+                            }
+                        },  # Only Sport, Trad, and TR routes
+                        { '$ne': ['$difficulty', ''] },  # Only routes with a registered difficulty
+                        { '$ne': ['$parent_id', '112166257'] }  # No generic routes
+                    ]
+                }
+            }
+        }
+    ]
 
-    data = list(db['routes'].find(
-        { '_id': { '$in': route_ids} },
-        { '_id': 1, 'difficulty': 1, 'types': 1 }
-    ))
+    def f(route):
+        s = set(['Boulder', 'Aid', 'Ice', 'Mixed', 'Snow'])
+        return not set(route['types']).intersection(s)
 
-    def filter_func(e):
-        res = e['difficulty'] == 'Easy 5th' or e['difficulty'][0] in ['3', '4', '5']
-        res = res and match_counter[e['_id']] >= MATCH_THRESHOLD
+    lprint("Aggregating data...")
+    ticks_grouped_by_user   = list(ticks_col.aggregate(tick_pipeline))
+    valid_routes            = list(routes_col.aggregate(route_pipeline))
+    valid_routes            = list(filter(f, valid_routes))    
+    valid_route_ids         = [route['_id'] for route in valid_routes]
+    lprint("Data succesfully aggregated!")
 
-        return res
+    # Initialize ratings
+    ratings = {}
+    counter = {}
 
-    data = list(filter(filter_func, data))
+    shuffle(ticks_grouped_by_user)
 
-    for e in data:
-        # Add the elo rating to the route
-        e['elo'] = ratings[e['_id']]
+    # Update ratings for each user
+    for i, user_ticks in enumerate(ticks_grouped_by_user[:MAX_USERS]):
+        # lprint(f'Processing user {i + 1} of {len(ticks_grouped_by_user)}')
+        update_ratings(user_ticks['ticks'], valid_route_ids, ratings, counter)
 
-        # Add the numerical difficulty to the route
-        difficulty              = e['difficulty'].split(' ')[0]
-        difficulty              = difficulty if difficulty != 'Easy' else 'Easy 5th'
-        e['number_difficulty']  = grade_dict[difficulty]
+    data = []
 
+    for route in valid_routes:
+        if route['_id'] in ratings.keys() and route['_id'] in counter:
+            if counter[route['_id']] >= MIN_USERS:
+                # Add the elo rating to the route
+                route['elo_rating'] = ratings[route['_id']]
+
+                # Add the numerical difficulty to the route
+                difficulty  = route['difficulty'].split(' ')[0]
+                difficulty  = difficulty if difficulty != 'Easy' else 'Easy 5th'
+
+                # We need to check because there are some routes with only safety grades
+                if difficulty in grade_dict:
+                    route['difficulty_num'] = grade_dict[difficulty]
+
+                    # Add to data for dataframe
+                    keys = ['_id', 'difficulty', 'difficulty_num', 'elo_rating', 'types']
+                    data.append({ key: route[key] for key in keys })
+
+    # Make dataframe
     df = pd.DataFrame.from_dict(data)
-    lprint(df.to_string())
-    lprint(df['number_difficulty'].corr(df['elo']))
 
-# Run code
-matches = generate_matches()
-run_matches(matches)
+    # And return it
+    return df
 
+def get_corr(df):
+    return df['difficulty_num'].corr(df['elo_rating'])
