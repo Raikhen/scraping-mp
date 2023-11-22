@@ -9,7 +9,7 @@ K                   = 32
 BASE                = 1200
 MIN_ROUTES_PER_USER = 30
 MIN_USERS           = 20
-MAX_USERS           = 60000
+MAX_USERS           = 10000
 
 # Connect to the database
 db = get_db()
@@ -51,7 +51,6 @@ def update_ratings(user_ticks, valid_routes, ratings, counter):
 
         lead_styles = [t['leadStyle'] for t in list(route_ticks)]
         styles      = [t['style'] for t in list(route_ticks)]
-        lprint(f'Styles = {styles}, Lead styles: {lead_styles}, score: {scores[route]}')
         
         if scores[route] != -1:
             # Set initial rating
