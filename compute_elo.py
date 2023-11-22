@@ -129,7 +129,7 @@ def run_matches():
                             }
                         },  # Only Sport, Trad, and TR routes
                         { '$ne': ['$difficulty', ''] },  # Only routes with a registered difficulty
-                        { '$ne': ['$parent_id', '112166257'] }  # No generic routes
+                        { '$ne': ['$area_id', '112166257'] }  # No generic routes
                     ]
                 }
             }
