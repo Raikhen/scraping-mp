@@ -1,3 +1,4 @@
+import pymongo
 import pandas as pd
 from random                 import  shuffle
 from utils.db_utils         import  get_db
@@ -68,8 +69,8 @@ def update_ratings(user_ticks, valid_routes, ratings, counter):
     # Update ratings
     for route1 in user_ticked_routes:
         for route2 in user_ticked_routes:
-            # Skip update if the routes are the same or have the same score
-            if route1 == route2: # or scores[route1] == scores[route2]:
+            # Skip update if the routes are the same
+            if route1 == route2:
                 continue
 
             # Skip update if one of the routes has no score
@@ -179,6 +180,22 @@ def run_matches():
 
     # Make dataframe
     df = pd.DataFrame.from_dict(data)
+    df = df.set_index('_id')
 
     # And return it
     return df
+
+def update_db():
+    df = run_matches()
+
+    update_operations = []
+
+    for index, row in df.iterrows():
+        update_operations.append(
+            pymongo.UpdateOne(
+                { '_id': index },
+                { '$set': { 'elo_rating': row['elo_rating'] } }
+            )
+        )
+
+    result = db['routes'].bulk_write(update_operations)
