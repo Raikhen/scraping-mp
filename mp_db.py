@@ -16,50 +16,9 @@ total_threads = 64
 # Get MongoDB database
 db = get_db()
 
-def populate_routes_in(areas, routes, area_id, worker_id = -1):
-    area_exists = areas.find_one({"_id": int(area_id)})
-    area = get_area(area_id)
-    area_processed = process_area(area)
-    if area_exists is None:
-        # Object doesn't exist, so add it to the collection
-        result = areas.insert_one(area_processed)
-        if (worker_id == -1):
-            lprint("New area added with id: " + str(result.inserted_id))
-        else: 
-            lprint(f"[Worker {worker_id}] New area added with id: " + str(result.inserted_id))
-    else:
-        # Object with the same name already exists; you can update it or take other action
-        if (worker_id == -1):
-            lprint(f"Area {area_id} already exists.")
-        else: 
-            lprint(f"[Worker {worker_id}] Area {area_id} already exists.")
-
-    for child in area['children']:
-
-        child_id = str(child['id'])
-
-        if child['type'] == 'Route':
-
-            route_exists = routes.find_one({"_id": int(child_id)})
-
-            if route_exists is None:
-                # Object doesn't exist, so add it to the collection
-                route = get_route(child_id)
-                route = process_route(route)
-                result = routes.insert_one(route)
-                if (worker_id == -1):
-                    lprint("New route added with id: " + str(result.inserted_id))
-                else: 
-                    lprint(f"[Worker {worker_id}] New route added with id: " + str(result.inserted_id))
-            else:
-                # Object with the same name already exists; you can update it or take other action
-                if (worker_id == -1):
-                    lprint(f"Route {child_id} already exists.")
-                else: 
-                    lprint(f"[Worker {worker_id}] Route {child_id} already exists.")
-
-        else: 
-            populate_routes_in(areas, routes, child_id, worker_id)
+#------------------------#
+# Linear Tick Populating #
+#------------------------#
 
 def populate_ticks(db, start_route=105714687):
     #Gather collections
@@ -127,6 +86,10 @@ def populate_ticks(db, start_route=105714687):
     except Exception as e:
         lprint(e)
         lprint("Broke on Route ID - " + str(route_ids[i]))
+
+#--------------------------#
+# Parallel Tick Populating #
+#--------------------------#
 
 def populate_ticks_worker(db, thread_num, start_info=None):
     #Gather collections
@@ -209,6 +172,55 @@ def populate_ticks_parallel(db):
     for thread in threads:
         thread.join()
 
+#-------------------------#
+# Linear Route Populating #
+#-------------------------#
+
+def populate_routes_in(areas, routes, area_id, worker_id = -1):
+    area_exists = areas.find_one({"_id": int(area_id)})
+    area = get_area(area_id)
+    area_processed = process_area(area)
+    if area_exists is None:
+        # Object doesn't exist, so add it to the collection
+        result = areas.insert_one(area_processed)
+        if (worker_id == -1):
+            lprint("New area added with id: " + str(result.inserted_id))
+        else: 
+            lprint(f"[Worker {worker_id}] New area added with id: " + str(result.inserted_id))
+    else:
+        # Object with the same name already exists; you can update it or take other action
+        if (worker_id == -1):
+            lprint(f"Area {area_id} already exists.")
+        else: 
+            lprint(f"[Worker {worker_id}] Area {area_id} already exists.")
+
+    for child in area['children']:
+
+        child_id = str(child['id'])
+
+        if child['type'] == 'Route':
+
+            route_exists = routes.find_one({"_id": int(child_id)})
+
+            if route_exists is None:
+                # Object doesn't exist, so add it to the collection
+                route = get_route(child_id)
+                route = process_route(route)
+                result = routes.insert_one(route)
+                if (worker_id == -1):
+                    lprint("New route added with id: " + str(result.inserted_id))
+                else: 
+                    lprint(f"[Worker {worker_id}] New route added with id: " + str(result.inserted_id))
+            else:
+                # Object with the same name already exists; you can update it or take other action
+                if (worker_id == -1):
+                    lprint(f"Route {child_id} already exists.")
+                else: 
+                    lprint(f"[Worker {worker_id}] Route {child_id} already exists.")
+
+        else: 
+            populate_routes_in(areas, routes, child_id, worker_id)
+
 def populate_routes(db, start_id = 105905173):
     started = False
     areas = db['areas']
@@ -221,6 +233,37 @@ def populate_routes(db, start_id = 105905173):
             started = True
         if (started):
             populate_routes_in(areas, routes, area_id)
+
+#---------------------------#
+# Parallel Route Populating #
+#---------------------------#
+
+# def worker(state, db, start_id, areas, routes, directory, worker_id):
+#     area_id = get_id(directory[state])
+#     if directory_index(directory, area_id) >= directory_index(directory, find_root_parent_id(db, start_id)):
+#         populate_routes_in(areas, routes, area_id, worker_id)
+
+# def parallel_populate_routes(db, start_id=105905173):
+#     areas = db['areas']
+#     routes = db['routes']
+#     directory = get_directory()
+#     del directory['International']
+
+#     # Create a pool of worker processes
+#     pool = Pool(processes=cpu_count())  # Use the number of CPU cores available
+
+#     worker_ids = range(pool._processes)  # Generate worker identifiers
+
+#     # Use the pool of processes to parallelize the work
+#     # lprint([(worker_id, state) for worker_id, state in zip(, directory)])
+#     pool.starmap(worker, [(state, db, start_id, areas, routes, directory, worker_id) for worker_id, state in zip(list(worker_ids) * (len(directory) // len(worker_ids)), directory)])
+#     pool.close()
+#     pool.join()
+#     return
+
+#---------------------------#
+# Linear Comment Populating #
+#---------------------------#
 
 def populate_comments(db, start_route=105714687):
     #Gather collections
@@ -286,6 +329,10 @@ def populate_comments(db, start_route=105714687):
         lprint(e)
         lprint("Broke on Route ID - " + str(route_ids[i]))
 
+#----------------------#
+# Directory Processing #
+#----------------------#
+
 def directory_index(directory, area_id):
     index = None
     for i, state in enumerate(directory):
@@ -293,30 +340,9 @@ def directory_index(directory, area_id):
             index = i
     return index
 
-# def worker(state, db, start_id, areas, routes, directory, worker_id):
-#     area_id = get_id(directory[state])
-#     if directory_index(directory, area_id) >= directory_index(directory, find_root_parent_id(db, start_id)):
-#         populate_routes_in(areas, routes, area_id, worker_id)
-
-# def parallel_populate_routes(db, start_id=105905173):
-    areas = db['areas']
-    routes = db['routes']
-    directory = get_directory()
-    del directory['International']
-
-    # Create a pool of worker processes
-    pool = Pool(processes=cpu_count())  # Use the number of CPU cores available
-
-    worker_ids = range(pool._processes)  # Generate worker identifiers
-
-    # Use the pool of processes to parallelize the work
-    # lprint([(worker_id, state) for worker_id, state in zip(, directory)])
-    pool.starmap(worker, [(state, db, start_id, areas, routes, directory, worker_id) for worker_id, state in zip(list(worker_ids) * (len(directory) // len(worker_ids)), directory)])
-    pool.close()
-    pool.join()
-
-
-    return
+#-----------------#
+# JSON Processing #
+#-----------------#
 
 def process_area(area):
     area_copy = area.copy()
@@ -346,6 +372,8 @@ def process_ticks(tick):
     tick_copy['_id'] = tick_copy.pop('id')
     return tick_copy
 
-# populate_comments(db, start_route=113585416)
-# populate_ticks_parallel(db)
+#------#
+# Main #
+#------#
+
 populate_ticks(db)
