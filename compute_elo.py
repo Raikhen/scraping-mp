@@ -10,7 +10,7 @@ K                   = 1
 BASE                = 2000
 MIN_ROUTES_PER_USER = 10
 MIN_USERS           = 50
-MAX_USERS           = 10000
+MAX_USERS           = 2 ** 50
 
 # Connect to the database
 db = get_db()
