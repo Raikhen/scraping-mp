@@ -5,8 +5,8 @@ from utils.grade_utils      import  grade_dict
 from utils.logger           import  lprint, lpprint
 
 # Params
-K                   = 1
-BASE                = 1200
+K                   = 4
+BASE                = 2000
 MIN_ROUTES_PER_USER = 30
 MIN_USERS           = 30
 MAX_USERS           = 2 ** 50
@@ -165,13 +165,15 @@ def run_matches():
                 route['elo_rating'] = ratings[route['_id']]
 
                 # Add the numerical difficulty to the route
-                difficulty              = route['difficulty'].split(' ')[0]
-                difficulty              = difficulty if difficulty != 'Easy' else 'Easy 5th'
-                route['difficulty_num'] = grade_dict[difficulty]
+                difficulty  = route['difficulty'].split(' ')[0]
+                difficulty  = difficulty if difficulty != 'Easy' else 'Easy 5th'
 
-                # Add to data for dataframe
-                keys = ['_id', 'difficulty', 'difficulty_num', 'elo_rating', 'types']
-                data.append({ key: route[key] for key in keys })
+                if difficulty in grade_dict:
+                    route['difficulty_num'] = grade_dict[difficulty]
+
+                    # Add to data for dataframe
+                    keys = ['_id', 'difficulty', 'difficulty_num', 'elo_rating', 'types']
+                    data.append({ key: route[key] for key in keys })
 
     # Make dataframe
     df = pd.DataFrame.from_dict(data)
