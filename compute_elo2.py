@@ -25,13 +25,13 @@ def get_score(user_ticks):
         return 2
     elif 'Redpoint' in lead_styles or 'Pinkpoint' in lead_styles:
         return 3
-    elif 'Fell/Hung' in lead_styles:
-        return 4
+    elif 'TR' in styles or 'Follow' in styles or 'Fell/Hung' in lead_styles:
+        return 5
     else:
-        return -1
+        return 4
 
 def scores_diff(s1, s2):
-    return (s1 - s2 + 4) / 8
+    return (s1 - s2 + 5) / 10
 
 def update_ratings(user_ticks, valid_routes, ratings, counter):
     # Extract all routes ticked by the user
