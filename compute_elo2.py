@@ -5,7 +5,7 @@ from utils.grade_utils      import  grade_dict
 from utils.logger           import  lprint, lpprint
 
 # Params
-K                   = 32
+K                   = 1
 BASE                = 1200
 MIN_ROUTES_PER_USER = 30
 MIN_USERS           = 20
