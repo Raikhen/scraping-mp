@@ -8,8 +8,8 @@ from utils.logger           import  lprint, lpprint
 K                   = 1
 BASE                = 1200
 MIN_ROUTES_PER_USER = 30
-MIN_USERS           = 20
-MAX_USERS           = 10000
+MIN_USERS           = 30
+MAX_USERS           = 2 ** 50
 
 # Connect to the database
 db = get_db()
@@ -26,10 +26,13 @@ def get_score(user_ticks):
         return 2
     elif 'Redpoint' in lead_styles or 'Pinkpoint' in lead_styles:
         return 3
-    elif 'TR' in styles or 'Follow' in styles or 'Fell/Hung' in lead_styles:
-        return 5
-    else:
+    elif 'Fell/Hung' in lead_styles:
         return 4
+    else:
+        return -1
+
+def scores_diff(s1, s2):
+    return (s1 - s2 + 4) / 8
 
 def scores_diff(s1, s2):
     return (s1 - s2 + 5) / 10
@@ -178,4 +181,4 @@ def run_matches():
 
     return df['difficulty_num'].corr(df['elo_rating'])
 
-lprint(run_matches())
+lprint(f'Correlation factor: {run_matches()}')
