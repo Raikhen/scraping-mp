@@ -1,4 +1,5 @@
 import pandas as pd
+from random                 import  shuffle
 from utils.db_utils         import  get_db
 from utils.grade_utils      import  grade_dict
 from utils.logger           import  lprint, lpprint
@@ -8,7 +9,7 @@ K                   = 32
 BASE                = 1200
 MIN_ROUTES_PER_USER = 30
 MIN_USERS           = 20
-MAX_USERS           = 6000
+MAX_USERS           = 60000
 
 # Connect to the database
 db = get_db()
@@ -91,6 +92,14 @@ def run_matches():
 
     tick_pipeline = [
         {
+            '$match': {
+                '$or': [
+                    {'style': 'Solo'},
+                    {'leadStyle': {'$ne': ''}}
+                ]
+            }
+        },
+        {
             '$group': 
             {
                 '_id': '$user.id', 
@@ -137,6 +146,8 @@ def run_matches():
     # Initialize ratings
     ratings = {}
     counter = {}
+
+    shuffle(ticks_grouped_by_user)
 
     # Update ratings for each user
     for i, user_ticks in enumerate(ticks_grouped_by_user[:MAX_USERS]):
